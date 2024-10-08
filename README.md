@@ -1,13 +1,23 @@
-# ChatGPT Code Review Gerrit Plugin
+# AI Code Review Gerrit Plugin
+
+## Starting Point
+This plugin has been based on the initial chatGPT plugin available on github: [chatgpt-code-review-gerrit-plugin](https://github.com/amarula/chatgpt-code-review-gerrit-plugin/)
+
+A full history of the previous plugin is in the branch: gerrithub-chatgpt-code-review/main.
+
+The requirement of the updated plugin was to abstract the chatGPT specific nature of the plugin and to provide a more
+generic naming point, and set of configuration and API naming that used the openAPI specification that is
+common between chatGPT and other private AI service providers.
 
 ## Features
 
-This plugin allows you to use ChatGPT for code review in Gerrit conveniently. After submitting a Patch Set, OpenAI will
-provide review feedback in the form of comments and, optionally, a vote.
-You can continue to ask ChatGPT by @{gerritUserName} or @{gerritEmailAddress} (provided that `gerritEmailAddress` is in
+This plugin allows you to use different AI Chat services, e.g. ChatGPT or OLLAMA for code review in Gerrit conveniently.
+After submitting a Patch Set, OpenAI will provide review feedback in the form of comments and, optionally, a vote.
+You can continue to ask the AI Chat by @{gerritUserName} or @{gerritEmailAddress} (provided that `gerritEmailAddress` is in
 the form "gerritUserName@<any_email_domain>") in the comments to further guide it in generating more targeted review
 comments.
-Reviews can be also triggered by directing a comment with the `/review` command to ChatGPT.
+Reviews can be also triggered by directing a comment with the `/review` command which will be interpretted and sent on by
+the plugin.
 
 ## Getting Started
 
@@ -24,26 +34,44 @@ Reviews can be also triggered by directing a comment with the `/review` command 
 
 2. **Install:** Upload the compiled jar file to the `$gerrit_site/plugins` directory.
 
-3. **Configure:** First, you need to create a ChatGPT user in Gerrit.
+3. **Configure:** First, you need to create an AI Code Review user in Gerrit.
    Then, set up the basic parameters in your `$gerrit_site/etc/gerrit.config` file under the section
 
-   `[plugin "chatgpt-code-review-gerrit-plugin"]`:
+   `[plugin "ai-code-review"]`:
 
-- `gptToken`: OpenAI GPT token.
-- `gerritUserName`: Gerrit username of ChatGPT user.
+- `aiToken`: Authentication token, for aiType selected (Default: chatGPT bearer token).
+- `gerritUserName`: Gerrit username of AI Code Review user.
 - `globalEnable`: Default value is false. The plugin will only review specified repositories. If set to true, the plugin
    will by default review all pull requests.
 
-   For enhanced security, consider storing sensitive information like gptToken in a secure location
+   For enhanced security, consider storing sensitive information like aiToken in a secure location
    or file. Detailed instructions on how to do this will be provided later in this document.
 
 4. **Verify:** After restarting Gerrit, you can see the following information in Gerrit's logs:
 
    ```bash
-   INFO com.google.gerrit.server.plugins.PluginLoader : Loaded plugin chatgpt-code-review-gerrit-plugin, version ...
+   INFO com.google.gerrit.server.plugins.PluginLoader : Loaded plugin ai-code-review, version ...
    ```
 
-   You can also check the status of the chatgpt-code-review-gerrit-plugin on Gerrit's plugin page as Enabled.
+   You can also check the status of the ai-code-review on Gerrit's plugin page as Enabled.
+
+## Setup of a local ollama AI service.
+
+If you wish to test a local installation of 'Ollama' llm, then you can follow the instructions on the 
+ollama site directly, or the [official docker image](https://hub.docker.com/r/ollama/ollama) instructions.
+Using the docker instructions allows you to start various different models, and you can start and stop the
+image as much as you need to and the manifest data is associated with the container, so only when it is finally
+deleted with it remove the volume associated with that image.
+This allows you to clean up all the associated test images very easily with one command.
+
+``` docker run -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama ```
+
+You can then attach to this running ollama service and run any model/manifest you wish.
+
+``` docker exec -it ollama ollama run qwen2.5-coder ```
+
+
+
 
 ## Usage Examples
 
@@ -56,14 +84,15 @@ In the following example, a Patch Set receives a score of "-1" indicating a reco
 **NOTE**: Voting is disabled by default. To use this feature, it needs to be activated either across all projects or on
 a per-project basis via the `enabledVoting` configuration option, as described below.
 
-### ChatGPT Score Adjustment Following User Interaction
+### AI Code Review Score Adjustment Following User Interaction
 
-In the example below, ChatGPT initially posits a potential unintended behavior in the code, assigning a "-1" score.
+In the example below, the AI Chat initially posits a potential unintended behavior in the code, assigning a "-1" score.
 Upon receiving clarification, it resets the score to "0".
 
 ![Example of Dialogue](images/chatgpt_changed_mind.png?raw=true)
 
-More examples of ChatGPT's code reviews and inline discussions are available at
+More examples of ChatGPT's use within code reviews and inline discussions based on the origin ChatGPT
+version of this plugin are available at
 https://wiki.amarulasolutions.com/opensource/products/chatgpt-gerrit.html
 
 ## Configuration Parameters
@@ -77,25 +106,41 @@ To configure these parameters, you need to modify your Gerrit configuration file
 as follows:
 
 ```
-[plugin "chatgpt-code-review-gerrit-plugin"]
+[plugin "ai-code-review"]
     # Required parameters
-    gptToken = {gptToken}
+    aiToken = {aiToken}
     ...
 
     # Optional parameters
-    gptModel = {gptModel}
-    gptSystemPrompt = {gptSystemPrompt}
+    aiType = {aiType}
+    aiModel = {aiModel}
+    aiSystemPrompt = {aiSystemPrompt}
+    ...
+```
+
+Note aiType is only optional as by default the system will assume an aiType of chatGPT
+so as to maintain compatibility with the previous chat-gpt version of the plugin.
+If you require a different service, update the optional parameters such as `aiType`.
+
+### Example Configuration for OLLAMA
+
+```
+[plugin "ai-code-review"]
+    # Required parameters
+    aiType = OLLAMA
+    aiModel = qwen2.5-coder
+    aiDomain = http://localhost:11434/
     ...
 ```
 
 #### Secure Configuration
 
-It is highly recommended to store sensitive information such as `gptToken` in the `secure.config`
+It is highly recommended to store sensitive information such as `aiToken` in the `secure.config`
 file. Please edit the file at $gerrit_site/etc/`secure.config` and include the following details:
 
 ```
-[plugin "chatgpt-code-review-gerrit-plugin"]
-    gptToken = {gptToken}
+[plugin "ai-code-review"]
+    aiToken = {aiToken}
 ```
 
 If you wish to encrypt the information within the `secure.config` file, you can refer
@@ -106,21 +151,21 @@ to: https://gerrit.googlesource.com/plugins/secure-config
 To add the following content, please edit the `project.config` file in `refs/meta/config`:
 
 ```
-[plugin "chatgpt-code-review-gerrit-plugin"]
+[plugin "ai-code-review"]
     # Required parameters
     gerritUserName = {gerritUserName}
     ...
 
     # Optional parameters
-    gptModel = {gptModel}
-    gptSystemPrompt = {gptSystemPrompt}
+    aiModel = {aiModel}
+    aiSystemPrompt = {aiSystemPrompt}
     ...
 ```
 
 #### Secure Configuration
 
 Please ensure **strict control over the access permissions of `refs/meta/config`** since sensitive information such as
-`gptToken` is configured in the `project.config` file within `refs/meta/config`.
+`aiToken` is configured in the `project.config` file within `refs/meta/config`.
 
 ## Stateful and Stateless modes
 
@@ -151,24 +196,34 @@ on the specific requests made.
 
 ### Optional Parameters
 
-- `gptMode`: Select whether requests are processed in Stateless or Stateful mode. For backward compatibility, the
+- `aiMode`: Select whether requests are processed in Stateless or Stateful mode. For backward compatibility, the
 default value is `stateless`. To enable Stateful mode, set this parameter to `stateful`.
-- `gptModel`: The default model is `gpt-4o`. You can also configure it to `gpt-3.5-turbo` or `gpt-4-turbo`.
-- `gptDomain`: The default ChatGPT domain is `https://api.openai.com`.
-- `gptSystemPrompt`: You can modify the default system prompt ("Act as a PatchSet Reviewer") to your preferred prompt.
-- `gptReviewTemperature`: Specifies the temperature setting for ChatGPT when reviewing a Patch Set, with a default
+- `aiModel`: The default model is `gpt-4o`. You can also configure it to `gpt-3.5-turbo` or `gpt-4-turbo`.
+- `aiDomain`: The default if not specified is the ChatGPT domain `https://api.openai.com`.
+This correlates with the `aiType` field which defaults to CHATGPT if not specified.
+- `aiSystemPrompt`: You can modify the default system prompt ("Act as a PatchSet Reviewer") to your preferred prompt.
+- `aiReviewTemperature`: Specifies the temperature setting for ChatGPT when reviewing a Patch Set, with a default
   setting of 0.2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more
   focused and deterministic.
-- `gptCommentTemperature`: Specifies the temperature setting for ChatGPT when replying to a comment, with a default
+- `aiCommentTemperature`: Specifies the temperature setting for ChatGPT when replying to a comment, with a default
   setting of 1.0.
-- `gptReviewPatchSet`: Set to true by default. When switched to false, it disables the automatic review of Patch Sets as
+- `aiReviewPatchSet`: Set to true by default. When switched to false, it disables the automatic review of Patch Sets as
   they are created or updated.
-- `gptReviewCommitMessages`: The default value is true. When enabled, this option also verifies if the commit message
+- `aiReviewCommitMessages`: The default value is true. When enabled, this option also verifies if the commit message
   matches with the content of the Change Set.
 - `gptFullFileReview`: Enabled by default. Activating this option sends both unchanged lines and changes to ChatGPT for
   review, offering additional context information. Deactivating it (set to false) results in only the changed lines
   being submitted for review.
-- `gptStreamOutput`: The default value is false. Whether the response is expected in stream output mode or not.
+- `aiStreamOutput`: The default value is false. Whether the response is expected in stream output mode or not.
+- `aiType`: Allows the selection of different ai chat services the current list is ChatGPT, Ollama, AzureOpenAI and Generic.
+    For compatibility the default is ChatGPT when not specified.  Note: Gemeric is used to allow the specification of new
+    uri endpoints, and different authorization headers to allow new service testing more quickly.
+  - `aiAuthHeaderName`: When using the GENERIC aiType, you can specify any authorization header, which can allow you to test
+non bearer token authorization e.g. api-key used for AZUREOpenAI.
+  - `aiChatEndpoint`: When using the GENERIC aiType, you can specify any endpoint you wish
+  to test a different ai service, or new API.  e.g. /api/someapi.  Although it is best
+  to ensure the API is compatible with the openAPI specification or additional response parsing will be
+  needed to correctly read the data into the new API data structures. 
 - `maxReviewLines`: The default value is 1000. This sets a limit on the number of lines of code included in the review.
 - `maxReviewFileSize`: Set with a default value of 10000, this parameter establishes a cap on the file size that can be
   included in reviews.
@@ -198,7 +253,7 @@ default value is `stateless`. To enable Stateful mode, set this parameter to `st
   specified below. Turning off this option (false) allows the display of comments ChatGPT marks as irrelevant.
 - `filterCommentsRelevanceThreshold`: When `filterRelevantComments` is enabled, any review comment assigned a relevance
   score by ChatGPT below this threshold will not be shown. The default threshold is set at 0.6.
-- `gptRelevanceRules`: This option allows customization of the rules ChatGPT uses to determine the relevance of a task.
+- `aiRelevanceRules`: This option allows customization of the rules ChatGPT uses to determine the relevance of a task.
 - `patchSetCommentsAsResolved`: Initially set to false, this option leaves ChatGPT's Patch Set comments as unresolved,
   inviting further discussion. If activated, it marks ChatGPT's Patch Set comments as resolved.
 - `inlineCommentsAsResolved`: Initially set to false, this option leaves ChatGPT's inline comments as unresolved,
@@ -274,7 +329,7 @@ debugging purposes. This feature becomes available when the `enableMessageDebugg
 - `/configure --<CONFIG_KEY_1>=<CONFIG_VALUE_1> [... --<CONFIG_KEY_N>=<CONFIG_VALUE_N>]` assigns new values to one or
   more configuration keys.
 
-  **NOTE**: Values that include spaces, such as `gptSystemPrompt`, must be enclosed in double quotes.
+  **NOTE**: Values that include spaces, such as `aiSystemPrompt`, must be enclosed in double quotes.
 
 #### Command Options
 

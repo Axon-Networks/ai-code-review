@@ -1,1 +1,1 @@
-This plugin can send patches to GPT for code review.
+This plugin can send patch information to AI services for code review.
