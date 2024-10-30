@@ -31,7 +31,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
-import org.jetbrains.annotations.NotNull;
+import org.eclipse.jgit.annotations.NonNull;
 
 @Slf4j
 public class Configuration {
@@ -407,7 +407,7 @@ public class Configuration {
     return Double.parseDouble(getString(key, String.valueOf(defaultValue)));
   }
 
-  @NotNull
+  @NonNull
   private static <T extends Enum<T>> T getValueAsEnum(Class<T> enumClass, String value) {
     try {
       return Enum.valueOf(enumClass, value);
