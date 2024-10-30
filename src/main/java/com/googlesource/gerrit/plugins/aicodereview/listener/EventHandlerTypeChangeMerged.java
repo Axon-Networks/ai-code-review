@@ -11,43 +11,39 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class EventHandlerTypeChangeMerged implements IEventHandlerType {
-    private final Configuration config;
-    private final ChangeSetData changeSetData;
-    private final GerritChange change;
-    private final GitRepoFiles gitRepoFiles;
-    private final PluginDataHandlerProvider pluginDataHandlerProvider;
+  private final Configuration config;
+  private final ChangeSetData changeSetData;
+  private final GerritChange change;
+  private final GitRepoFiles gitRepoFiles;
+  private final PluginDataHandlerProvider pluginDataHandlerProvider;
 
-    EventHandlerTypeChangeMerged(
-            Configuration config,
-            ChangeSetData changeSetData,
-            GerritChange change,
-            GitRepoFiles gitRepoFiles,
-            PluginDataHandlerProvider pluginDataHandlerProvider
-    ) {
-        this.config = config;
-        this.changeSetData = changeSetData;
-        this.change = change;
-        this.gitRepoFiles = gitRepoFiles;
-        this.pluginDataHandlerProvider = pluginDataHandlerProvider;
-    }
+  EventHandlerTypeChangeMerged(
+      Configuration config,
+      ChangeSetData changeSetData,
+      GerritChange change,
+      GitRepoFiles gitRepoFiles,
+      PluginDataHandlerProvider pluginDataHandlerProvider) {
+    this.config = config;
+    this.changeSetData = changeSetData;
+    this.change = change;
+    this.gitRepoFiles = gitRepoFiles;
+    this.pluginDataHandlerProvider = pluginDataHandlerProvider;
+  }
 
-    @Override
-    public PreprocessResult preprocessEvent() {
-        return PreprocessResult.OK;
-    }
+  @Override
+  public PreprocessResult preprocessEvent() {
+    return PreprocessResult.OK;
+  }
 
-    @Override
-    public void processEvent() {
-        // TODO: Should we be firing assistant based stateful request items when the aiMode is stateless?
-        // This is extra paid for requests which aren't required if using GPT.
-        ChatGptAssistant chatGptAssistant = new ChatGptAssistant(
-                config,
-                changeSetData,
-                change,
-                gitRepoFiles,
-                pluginDataHandlerProvider
-        );
-        chatGptAssistant.flushAssistantIds();
-        chatGptAssistant.createVectorStore();
-    }
+  @Override
+  public void processEvent() {
+    // TODO: Should we be firing assistant based stateful request items when the aiMode is
+    // stateless?
+    // This is extra paid for requests which aren't required if using GPT.
+    ChatGptAssistant chatGptAssistant =
+        new ChatGptAssistant(
+            config, changeSetData, change, gitRepoFiles, pluginDataHandlerProvider);
+    chatGptAssistant.flushAssistantIds();
+    chatGptAssistant.createVectorStore();
+  }
 }

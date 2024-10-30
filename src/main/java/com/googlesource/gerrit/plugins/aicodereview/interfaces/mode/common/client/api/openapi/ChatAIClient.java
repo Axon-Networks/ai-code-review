@@ -5,7 +5,8 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.data.ChangeSetData;
 
 public interface ChatAIClient {
-    AIChatResponseContent ask(ChangeSetData changeSetData, GerritChange change, String patchSet)
-            throws Exception;
-    String getRequestBody();
+  AIChatResponseContent ask(ChangeSetData changeSetData, GerritChange change, String patchSet)
+      throws Exception;
+
+  String getRequestBody();
 }

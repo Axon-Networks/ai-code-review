@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class ChatGptResponse {
-    private String id;
-    private String object;
-    private String status;
+  private String id;
+  private String object;
+  private String status;
 }

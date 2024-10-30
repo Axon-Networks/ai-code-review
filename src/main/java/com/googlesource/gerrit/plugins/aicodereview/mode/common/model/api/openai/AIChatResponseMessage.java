@@ -1,22 +1,23 @@
 package com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai;
 
 import com.google.gson.annotations.SerializedName;
-import lombok.Data;
-
 import java.util.List;
+import lombok.Data;
 
 @Data
 public class AIChatResponseMessage {
-    private String role;
-    private String type;
-    @SerializedName("tool_calls")
-    private List<AIChatToolCall> toolCalls;
-    @SerializedName("message_creation")
-    private MessageCreation messageCreation;
+  private String role;
+  private String type;
 
-    @Data
-    public static class MessageCreation {
-        @SerializedName("message_id")
-        private String messageId;
-    }
+  @SerializedName("tool_calls")
+  private List<AIChatToolCall> toolCalls;
+
+  @SerializedName("message_creation")
+  private MessageCreation messageCreation;
+
+  @Data
+  public static class MessageCreation {
+    @SerializedName("message_id")
+    private String messageId;
+  }
 }

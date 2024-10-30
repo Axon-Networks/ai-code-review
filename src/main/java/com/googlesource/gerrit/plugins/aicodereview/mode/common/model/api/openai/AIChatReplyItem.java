@@ -6,9 +6,9 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class AIChatReplyItem extends AIChatDialogueItem {
-    private String reply;
-    private Integer score;
-    private Double relevance;
-    private boolean repeated;
-    private boolean conflicting;
+  private String reply;
+  private Integer score;
+  private Double relevance;
+  private boolean repeated;
+  private boolean conflicting;
 }

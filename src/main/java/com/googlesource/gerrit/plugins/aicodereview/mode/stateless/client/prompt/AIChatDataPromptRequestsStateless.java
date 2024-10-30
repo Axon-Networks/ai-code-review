@@ -10,20 +10,20 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.data.Gerri
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class AIChatDataPromptRequestsStateless extends AIChatDataPromptRequests implements ChatAIDataPrompt {
-    public AIChatDataPromptRequestsStateless(
-            Configuration config,
-            ChangeSetData changeSetData,
-            GerritClientData gerritClientData,
-            Localizer localizer
-    ) {
-        super(config, changeSetData, gerritClientData, localizer);
-    }
+public class AIChatDataPromptRequestsStateless extends AIChatDataPromptRequests
+    implements ChatAIDataPrompt {
+  public AIChatDataPromptRequestsStateless(
+      Configuration config,
+      ChangeSetData changeSetData,
+      GerritClientData gerritClientData,
+      Localizer localizer) {
+    super(config, changeSetData, gerritClientData, localizer);
+  }
 
-    protected AIChatMessageItem getMessageItem(int i) {
-        super.getMessageItem(i);
-        setHistory(messageItem, messageHistory);
+  protected AIChatMessageItem getMessageItem(int i) {
+    super.getMessageItem(i);
+    setHistory(messageItem, messageHistory);
 
-        return messageItem;
-    }
+    return messageItem;
+  }
 }

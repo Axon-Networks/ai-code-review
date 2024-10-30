@@ -1,36 +1,39 @@
 package com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.gerrit;
 
 import com.google.gson.annotations.SerializedName;
+import java.util.List;
 import lombok.Data;
 
-import java.util.List;
-
-// TODO remove once migration to GerritApi is finished and com.google.gerrit.extensions.common.ChangeInfo is used
+// TODO remove once migration to GerritApi is finished and
+// com.google.gerrit.extensions.common.ChangeInfo is used
 @Data
 public class GerritPatchSetDetail {
-    private Labels labels;
-    private List<GerritComment> messages;
-    @SerializedName("work_in_progress")
-    private Boolean workInProgress;
+  private Labels labels;
+  private List<GerritComment> messages;
 
-    @Data
-    public static class Labels {
-        @SerializedName("Code-Review")
-        private CodeReview codeReview;
-    }
+  @SerializedName("work_in_progress")
+  private Boolean workInProgress;
 
-    @Data
-    public static class CodeReview {
-        private List<Permission> all;
-    }
+  @Data
+  public static class Labels {
+    @SerializedName("Code-Review")
+    private CodeReview codeReview;
+  }
 
-    @Data
-    public static class Permission {
-        private Integer value;
-        private String date;
-        @SerializedName("permitted_voting_range")
-        private GerritPermittedVotingRange permittedVotingRange;
-        @SerializedName("_account_id")
-        private int accountId;
-    }
+  @Data
+  public static class CodeReview {
+    private List<Permission> all;
+  }
+
+  @Data
+  public static class Permission {
+    private Integer value;
+    private String date;
+
+    @SerializedName("permitted_voting_range")
+    private GerritPermittedVotingRange permittedVotingRange;
+
+    @SerializedName("_account_id")
+    private int accountId;
+  }
 }

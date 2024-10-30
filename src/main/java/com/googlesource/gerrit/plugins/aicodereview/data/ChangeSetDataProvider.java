@@ -7,17 +7,18 @@ import com.googlesource.gerrit.plugins.aicodereview.config.Configuration;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.data.ChangeSetData;
 
 public class ChangeSetDataProvider implements Provider<ChangeSetData> {
-    private final int gptAccountId;
-    private final Configuration config;
+  private final int gptAccountId;
+  private final Configuration config;
 
-    @Inject
-    ChangeSetDataProvider(Configuration config, AccountCache accountCache) {
-        this.config = config;
-        this.gptAccountId = accountCache.getByUsername(config.getGerritUserName()).get().account().id().get();
-    }
+  @Inject
+  ChangeSetDataProvider(Configuration config, AccountCache accountCache) {
+    this.config = config;
+    this.gptAccountId =
+        accountCache.getByUsername(config.getGerritUserName()).get().account().id().get();
+  }
 
-    @Override
-    public ChangeSetData get() {
-        return new ChangeSetData(gptAccountId, config.getVotingMinScore(), config.getVotingMaxScore());
-    }
+  @Override
+  public ChangeSetData get() {
+    return new ChangeSetData(gptAccountId, config.getVotingMinScore(), config.getVotingMaxScore());
+  }
 }

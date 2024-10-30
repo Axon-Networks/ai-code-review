@@ -4,13 +4,13 @@ import lombok.Data;
 
 @Data
 public class AIChatToolCall {
-    private String id;
-    private String type;
-    private Function function;
+  private String id;
+  private String type;
+  private Function function;
 
-    @Data
-    public static class Function {
-        private String name;
-        private String arguments;
-    }
+  @Data
+  public static class Function {
+    private String name;
+    private String arguments;
+  }
 }

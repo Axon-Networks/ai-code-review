@@ -17,38 +17,36 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AIChatPromptFactory {
 
-    public static ChatGptPromptStateful getAIChatPromptStateful(
-            Configuration config,
-            ChangeSetData changeSetData,
-            GerritChange change
-    ) {
-        if (change.getIsCommentEvent()) {
-            log.info("AIChatPromptFactory: Returned AIChatGptPromptStatefulRequests");
-            return new AIChatGptPromptStatefulRequests(config, changeSetData, change);
-        } else {
-            log.info("AIChatPromptFactory: Returned AIChatGptPromptStatefulReview");
-            return new AIChatGptPromptStatefulReview(config, changeSetData, change);
-        }
+  public static ChatGptPromptStateful getAIChatPromptStateful(
+      Configuration config, ChangeSetData changeSetData, GerritChange change) {
+    if (change.getIsCommentEvent()) {
+      log.info("AIChatPromptFactory: Returned AIChatGptPromptStatefulRequests");
+      return new AIChatGptPromptStatefulRequests(config, changeSetData, change);
+    } else {
+      log.info("AIChatPromptFactory: Returned AIChatGptPromptStatefulReview");
+      return new AIChatGptPromptStatefulReview(config, changeSetData, change);
     }
+  }
 
-    public static ChatAIDataPrompt getChatGptDataPrompt(
-            Configuration config,
-            ChangeSetData changeSetData,
-            GerritChange change,
-            GerritClientData gerritClientData,
-            Localizer localizer
-    ) {
-        if (change.getIsCommentEvent()) {
-            if ((config.getAIMode() == Settings.Modes.stateless)) {
-                log.info("AIChatPromptFactory: Returned AIChatDataPromptRequestsStateless");
-                return new AIChatDataPromptRequestsStateless(config, changeSetData, gerritClientData, localizer);
-            } else {
-                log.info("AIChatPromptFactory: Returned AIChatDataPromptRequestsStateful");
-                return new AIChatDataPromptRequestsStateful(config, changeSetData, gerritClientData, localizer);
-            }
-        } else {
-            log.info("AIChatPromptFactory: Returned AIChatDataPromptReview");
-            return new AIChatDataPromptReview(config, changeSetData, gerritClientData, localizer);
-        }
+  public static ChatAIDataPrompt getChatGptDataPrompt(
+      Configuration config,
+      ChangeSetData changeSetData,
+      GerritChange change,
+      GerritClientData gerritClientData,
+      Localizer localizer) {
+    if (change.getIsCommentEvent()) {
+      if ((config.getAIMode() == Settings.Modes.stateless)) {
+        log.info("AIChatPromptFactory: Returned AIChatDataPromptRequestsStateless");
+        return new AIChatDataPromptRequestsStateless(
+            config, changeSetData, gerritClientData, localizer);
+      } else {
+        log.info("AIChatPromptFactory: Returned AIChatDataPromptRequestsStateful");
+        return new AIChatDataPromptRequestsStateful(
+            config, changeSetData, gerritClientData, localizer);
+      }
+    } else {
+      log.info("AIChatPromptFactory: Returned AIChatDataPromptReview");
+      return new AIChatDataPromptReview(config, changeSetData, gerritClientData, localizer);
     }
+  }
 }

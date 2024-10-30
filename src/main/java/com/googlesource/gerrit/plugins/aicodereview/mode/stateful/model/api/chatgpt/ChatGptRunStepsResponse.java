@@ -8,6 +8,6 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class ChatGptRunStepsResponse extends ChatGptResponse {
-    @SerializedName("step_details")
-    private AIChatResponseMessage stepDetails;
+  @SerializedName("step_details")
+  private AIChatResponseMessage stepDetails;
 }

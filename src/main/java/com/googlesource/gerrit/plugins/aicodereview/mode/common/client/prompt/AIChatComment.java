@@ -10,29 +10,29 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class AIChatComment extends ClientBase {
-    protected ClientMessage commentMessage;
+  protected ClientMessage commentMessage;
 
-    private final ChangeSetData changeSetData;
-    private final Localizer localizer;
+  private final ChangeSetData changeSetData;
+  private final Localizer localizer;
 
-    public AIChatComment(Configuration config, ChangeSetData changeSetData, Localizer localizer) {
-        super(config);
-        this.changeSetData = changeSetData;
-        this.localizer = localizer;
+  public AIChatComment(Configuration config, ChangeSetData changeSetData, Localizer localizer) {
+    super(config);
+    this.changeSetData = changeSetData;
+    this.localizer = localizer;
+  }
+
+  protected String getCleanedMessage(GerritComment commentProperty) {
+    commentMessage =
+        new ClientMessage(config, changeSetData, commentProperty.getMessage(), localizer);
+    if (isFromAssistant(commentProperty)) {
+      commentMessage.removeDebugCodeBlocksReview().removeDebugCodeBlocksDynamicSettings();
+    } else {
+      commentMessage.removeMentions().parseRemoveCommands();
     }
+    return commentMessage.removeHeadings().getMessage();
+  }
 
-    protected String getCleanedMessage(GerritComment commentProperty) {
-        commentMessage = new ClientMessage(config, changeSetData, commentProperty.getMessage(), localizer);
-        if (isFromAssistant(commentProperty)) {
-            commentMessage.removeDebugCodeBlocksReview().removeDebugCodeBlocksDynamicSettings();
-        }
-        else {
-            commentMessage.removeMentions().parseRemoveCommands();
-        }
-        return commentMessage.removeHeadings().getMessage();
-    }
-
-    protected boolean isFromAssistant(GerritComment commentProperty) {
-        return commentProperty.getAuthor().getAccountId() == changeSetData.getGptAccountId();
-    }
+  protected boolean isFromAssistant(GerritComment commentProperty) {
+    return commentProperty.getAuthor().getAccountId() == changeSetData.getGptAccountId();
+  }
 }

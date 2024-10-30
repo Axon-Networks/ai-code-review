@@ -8,12 +8,13 @@ import lombok.Data;
 @Data
 @Builder
 public class ChatGptCreateAssistantRequestBody {
-    private String name;
-    private String description;
-    private String instructions;
-    private String model;
-    private Double temperature;
-    private AIChatTool[] tools;
-    @SerializedName("tool_resources")
-    private ChatGptToolResources toolResources;
+  private String name;
+  private String description;
+  private String instructions;
+  private String model;
+  private Double temperature;
+  private AIChatTool[] tools;
+
+  @SerializedName("tool_resources")
+  private ChatGptToolResources toolResources;
 }

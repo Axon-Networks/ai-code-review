@@ -4,6 +4,6 @@ import lombok.Data;
 
 @Data
 public class GerritPermittedVotingRange {
-    private int min;
-    private int max;
+  private int min;
+  private int max;
 }

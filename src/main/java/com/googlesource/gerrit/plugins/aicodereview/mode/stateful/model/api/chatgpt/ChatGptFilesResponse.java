@@ -6,5 +6,5 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class ChatGptFilesResponse extends ChatGptResponse {
-    private String filename;
+  private String filename;
 }

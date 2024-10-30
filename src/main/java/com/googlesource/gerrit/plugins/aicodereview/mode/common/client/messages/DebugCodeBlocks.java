@@ -1,32 +1,39 @@
 package com.googlesource.gerrit.plugins.aicodereview.mode.common.client.messages;
 
+import static com.googlesource.gerrit.plugins.aicodereview.utils.TextUtils.CODE_DELIMITER;
+import static com.googlesource.gerrit.plugins.aicodereview.utils.TextUtils.CODE_DELIMITER_BEGIN;
+import static com.googlesource.gerrit.plugins.aicodereview.utils.TextUtils.joinWithNewLine;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.googlesource.gerrit.plugins.aicodereview.utils.TextUtils.*;
-
 public class DebugCodeBlocks {
-    protected final String commentOpening;
-    protected final Pattern debugMessagePattern;
+  protected final String commentOpening;
+  protected final Pattern debugMessagePattern;
 
-    public DebugCodeBlocks(String openingTitle) {
-        commentOpening = CODE_DELIMITER_BEGIN + openingTitle + "\n";
-        debugMessagePattern = Pattern.compile("\\s+" + CODE_DELIMITER +"\\s*" + openingTitle + ".*" +
-                CODE_DELIMITER + "\\s*", Pattern.DOTALL);
-    }
+  public DebugCodeBlocks(String openingTitle) {
+    commentOpening = CODE_DELIMITER_BEGIN + openingTitle + "\n";
+    debugMessagePattern =
+        Pattern.compile(
+            "\\s+" + CODE_DELIMITER + "\\s*" + openingTitle + ".*" + CODE_DELIMITER + "\\s*",
+            Pattern.DOTALL);
+  }
 
-    public String removeDebugCodeBlocks(String message) {
-        Matcher debugMessagematcher = debugMessagePattern.matcher(message);
-        return debugMessagematcher.replaceAll("");
-    }
+  public String removeDebugCodeBlocks(String message) {
+    Matcher debugMessagematcher = debugMessagePattern.matcher(message);
+    return debugMessagematcher.replaceAll("");
+  }
 
-    protected String getDebugCodeBlock(List<String> panelItems) {
-        return joinWithNewLine(new ArrayList<>() {{
+  protected String getDebugCodeBlock(List<String> panelItems) {
+    return joinWithNewLine(
+        new ArrayList<>() {
+          {
             add(commentOpening);
             addAll(panelItems);
             add(CODE_DELIMITER);
-        }});
-    }
+          }
+        });
+  }
 }

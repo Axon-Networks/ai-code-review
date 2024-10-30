@@ -7,36 +7,34 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai.AIChatRequestMessage;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.data.ChangeSetData;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.data.GerritClientData;
-import lombok.extern.slf4j.Slf4j;
-
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class AIChatDataPromptReview extends AIChatDataPromptBase implements ChatAIDataPrompt {
-    public AIChatDataPromptReview(
-            Configuration config,
-            ChangeSetData changeSetData,
-            GerritClientData gerritClientData,
-            Localizer localizer
-    ) {
-        super(config, changeSetData, gerritClientData, localizer);
-        commentProperties = new ArrayList<>(commentData.getCommentMap().values());
-    }
+  public AIChatDataPromptReview(
+      Configuration config,
+      ChangeSetData changeSetData,
+      GerritClientData gerritClientData,
+      Localizer localizer) {
+    super(config, changeSetData, gerritClientData, localizer);
+    commentProperties = new ArrayList<>(commentData.getCommentMap().values());
+  }
 
-    public void addMessageItem(int i) {
-        AIChatMessageItem messageItem = getMessageItem(i);
-        if (messageItem.getHistory() != null) {
-            messageItems.add(messageItem);
-        }
+  public void addMessageItem(int i) {
+    AIChatMessageItem messageItem = getMessageItem(i);
+    if (messageItem.getHistory() != null) {
+      messageItems.add(messageItem);
     }
+  }
 
-    protected AIChatMessageItem getMessageItem(int i) {
-        AIChatMessageItem messageItem = super.getMessageItem(i);
-        List<AIChatRequestMessage> messageHistory = aiChatHistory.retrieveHistory(commentProperties.get(i),
-                true);
-        setHistory(messageItem, messageHistory);
+  protected AIChatMessageItem getMessageItem(int i) {
+    AIChatMessageItem messageItem = super.getMessageItem(i);
+    List<AIChatRequestMessage> messageHistory =
+        aiChatHistory.retrieveHistory(commentProperties.get(i), true);
+    setHistory(messageItem, messageHistory);
 
-        return messageItem;
-    }
+    return messageItem;
+  }
 }
