@@ -7,13 +7,10 @@
     <groupId>com.googlesource.gerrit.plugins</groupId>
     <artifactId>ai-code-review</artifactId>
     <packaging>jar</packaging>
-    <version>4.0.0</version>
+    <version>3.11.0</version>
     <properties>
         <Gerrit-ApiType>plugin</Gerrit-ApiType>
-        <!-- Default the gerrit-api version to the lowest version that uses JDK17 by default, the same as this project.
-        because we can't run on JDK11, but equally we wish to support as many gerrit versions for this plugin as possible, this doesn't mean this wont run
-         on later versions, it just allows it to be backward compatible back to this min version ( unless we actually need to use a feature from a later API spec -->
-        <Gerrit-ApiVersion>3.7.9</Gerrit-ApiVersion>
+        <Gerrit-ApiVersion>3.11.0-rc1</Gerrit-ApiVersion>
         <maven.test.skip>false</maven.test.skip>
     </properties>
     <build>
@@ -46,7 +43,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
                 <configuration>
-                    <release>17</release>
+                    <release>21</release>
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
@@ -170,7 +167,7 @@
         <dependency>
             <groupId>com.github.tomakehurst</groupId>
             <artifactId>wiremock-standalone</artifactId>
-            <version>2.27.2</version>
+            <version>3.0.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
