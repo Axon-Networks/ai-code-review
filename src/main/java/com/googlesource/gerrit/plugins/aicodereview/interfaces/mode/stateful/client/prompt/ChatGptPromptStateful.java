@@ -1,12 +1,31 @@
+// Copyright (C) 2024 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package com.googlesource.gerrit.plugins.aicodereview.interfaces.mode.stateful.client.prompt;
 
 import java.util.List;
 
 public interface ChatGptPromptStateful {
-    void addGptAssistantInstructions(List<String> instructions);
-    String getDefaultGptAssistantDescription();
-    String getDefaultGptAssistantInstructions();
-    String getDefaultGptThreadReviewMessage(String patchSet);
-    String getAIRequestDataPrompt();
-    void setCommentEvent(boolean isCommentEvent);
+  void addGptAssistantInstructions(List<String> instructions);
+
+  String getDefaultGptAssistantDescription();
+
+  String getDefaultGptAssistantInstructions();
+
+  String getDefaultGptThreadReviewMessage(String patchSet);
+
+  String getAIRequestDataPrompt();
+
+  void setCommentEvent(boolean isCommentEvent);
 }

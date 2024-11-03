@@ -1,32 +1,53 @@
+// Copyright (C) 2024 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package com.googlesource.gerrit.plugins.aicodereview.mode.common.client.messages;
+
+import static com.googlesource.gerrit.plugins.aicodereview.utils.TextUtils.CODE_DELIMITER;
+import static com.googlesource.gerrit.plugins.aicodereview.utils.TextUtils.CODE_DELIMITER_BEGIN;
+import static com.googlesource.gerrit.plugins.aicodereview.utils.TextUtils.joinWithNewLine;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.googlesource.gerrit.plugins.aicodereview.utils.TextUtils.*;
-
 public class DebugCodeBlocks {
-    protected final String commentOpening;
-    protected final Pattern debugMessagePattern;
+  protected final String commentOpening;
+  protected final Pattern debugMessagePattern;
 
-    public DebugCodeBlocks(String openingTitle) {
-        commentOpening = CODE_DELIMITER_BEGIN + openingTitle + "\n";
-        debugMessagePattern = Pattern.compile("\\s+" + CODE_DELIMITER +"\\s*" + openingTitle + ".*" +
-                CODE_DELIMITER + "\\s*", Pattern.DOTALL);
-    }
+  public DebugCodeBlocks(String openingTitle) {
+    commentOpening = CODE_DELIMITER_BEGIN + openingTitle + "\n";
+    debugMessagePattern =
+        Pattern.compile(
+            "\\s+" + CODE_DELIMITER + "\\s*" + openingTitle + ".*" + CODE_DELIMITER + "\\s*",
+            Pattern.DOTALL);
+  }
 
-    public String removeDebugCodeBlocks(String message) {
-        Matcher debugMessagematcher = debugMessagePattern.matcher(message);
-        return debugMessagematcher.replaceAll("");
-    }
+  public String removeDebugCodeBlocks(String message) {
+    Matcher debugMessagematcher = debugMessagePattern.matcher(message);
+    return debugMessagematcher.replaceAll("");
+  }
 
-    protected String getDebugCodeBlock(List<String> panelItems) {
-        return joinWithNewLine(new ArrayList<>() {{
+  protected String getDebugCodeBlock(List<String> panelItems) {
+    return joinWithNewLine(
+        new ArrayList<>() {
+          {
             add(commentOpening);
             addAll(panelItems);
             add(CODE_DELIMITER);
-        }});
-    }
+          }
+        });
+  }
 }
