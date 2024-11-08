@@ -303,7 +303,7 @@ public class AIChatReviewTestBase extends AIChatTestBase {
     ArgumentCaptor<ReviewInput> reviewInputCaptor = ArgumentCaptor.forClass(ReviewInput.class);
     verify(revisionApiMock).review(reviewInputCaptor.capture());
     gptRequestBody =
-        getGson().fromJson(patchSetReviewer.getChatGptClient().getRequestBody(), JsonObject.class);
+        getGson().fromJson(patchSetReviewer.getChatAIClient().getRequestBody(), JsonObject.class);
     return reviewInputCaptor;
   }
 
