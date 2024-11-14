@@ -15,7 +15,6 @@
 package com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai;
 
 import com.google.gson.annotations.SerializedName;
-
 import java.util.List;
 import lombok.Builder;
 import lombok.Data;

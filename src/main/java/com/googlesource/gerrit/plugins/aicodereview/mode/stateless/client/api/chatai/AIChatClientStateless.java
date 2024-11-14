@@ -34,7 +34,6 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.data.ChangeSetData;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateless.client.api.UriResourceLocatorStateless;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateless.client.prompt.AIChatPromptStateless;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -62,9 +61,7 @@ public class AIChatClientStateless extends AIChatClient implements ChatAIClient 
     isCommentEvent = change.getIsCommentEvent();
     String changeId = change.getFullChangeId();
     log.info(
-        "Processing STATELESS AIChat Request with changeId: {}, Patch Set: {}",
-        changeId,
-        patchSet);
+        "Processing STATELESS AIChat Request with changeId: {}, Patch Set: {}", changeId, patchSet);
     for (int attemptInd = 0; attemptInd < REVIEW_ATTEMPT_LIMIT; attemptInd++) {
       HttpRequest request = createRequest(config, changeSetData, patchSet);
       log.debug("AIChat request: {}", request.toString());
