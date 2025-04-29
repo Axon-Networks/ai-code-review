@@ -7,10 +7,10 @@
     <groupId>com.googlesource.gerrit.plugins</groupId>
     <artifactId>ai-code-review</artifactId>
     <packaging>jar</packaging>
-    <version>3.11.0</version>
+    <version>3.12.0</version>
     <properties>
         <Gerrit-ApiType>plugin</Gerrit-ApiType>
-        <Gerrit-ApiVersion>3.11.0-rc1</Gerrit-ApiVersion>
+        <Gerrit-ApiVersion>3.12.0-rc4</Gerrit-ApiVersion>
         <maven.test.skip>false</maven.test.skip>
     </properties>
     <build>
