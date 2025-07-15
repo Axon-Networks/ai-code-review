@@ -43,10 +43,17 @@ public class AIChatParameters extends ClientBase {
   }
 
   public int getRandomSeed() {
+    if (retrieveUsePositiveSeedOnly()) {
+      return ThreadLocalRandom.current().nextInt(0, Integer.MAX_VALUE);
+    }
     return ThreadLocalRandom.current().nextInt();
   }
 
   private Double retrieveTemperature(String temperatureKey, Double defaultTemperature) {
     return Double.parseDouble(config.getString(temperatureKey, String.valueOf(defaultTemperature)));
+  }
+
+  private boolean retrieveUsePositiveSeedOnly() {
+    return Boolean.parseBoolean(config.getString(Configuration.KEY_AI_POSITIVE_SEED_ONLY, "false"));
   }
 }

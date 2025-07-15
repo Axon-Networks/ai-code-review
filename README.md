@@ -271,6 +271,7 @@ value is false). When set to true, it enables commands and options like `--debug
 Configuration commands.
 - `forceCreateAssistant`: In Stateful mode, forces the creation of a new assistant with each request instead of only
 when configuration settings change or Changes are merged.
+- `aiUsePositiveSeed`: Only generate positive seeds, this is needed for some models, f.i Mistral. Defaults to false.
 
   **NOTE**: This option may increase OpenAI API usage and should be used for **testing or debugging purposes only**.
 

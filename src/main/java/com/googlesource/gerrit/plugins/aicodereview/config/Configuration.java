@@ -94,6 +94,7 @@ public class Configuration {
   public static final String KEY_AI_RELEVANCE_RULES = "aiRelevanceRules";
   public static final String KEY_AI_REVIEW_TEMPERATURE = "aiReviewTemperature";
   public static final String KEY_AI_COMMENT_TEMPERATURE = "aiCommentTemperature";
+  public static final String KEY_AI_POSITIVE_SEED_ONLY = "aiUsePositiveSeed";
   public static final String KEY_VOTING_MIN_SCORE = "votingMinScore";
   public static final String KEY_VOTING_MAX_SCORE = "votingMaxScore";
   public static final String KEY_GERRIT_USERNAME = "gerritUserName";
