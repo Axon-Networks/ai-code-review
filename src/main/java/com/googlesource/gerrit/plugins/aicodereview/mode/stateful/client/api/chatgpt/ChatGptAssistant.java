@@ -38,8 +38,11 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.model.api.chat
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.model.api.chatgpt.ChatGptResponse;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.model.api.chatgpt.ChatGptToolResources;
 import com.googlesource.gerrit.plugins.aicodereview.utils.HashUtils;
+
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -112,12 +115,28 @@ public class ChatGptAssistant extends ClientBase {
 
   private String uploadRepoFiles() {
     String repoFiles = gitRepoFiles.getGitRepoFiles(config, change);
-    Path repoPath =
-        createTempFileWithContent(sanitizeFilename(change.getProjectName()), ".json", repoFiles);
-    ChatGptFiles chatGptFiles = new ChatGptFiles(config);
-    ChatGptFilesResponse chatGptFilesResponse = chatGptFiles.uploadFiles(repoPath);
-
-    return chatGptFilesResponse.getId();
+    Path repoPath = null;
+    try {
+      repoPath =
+        createTempFileWithContent(sanitizeFilename(
+          change.getProjectName()),
+          ".json",
+          repoFiles
+        );
+      ChatGptFiles chatGptFiles = new ChatGptFiles(config);
+      ChatGptFilesResponse chatGptFilesResponse = chatGptFiles.uploadFiles(repoPath);
+      return chatGptFilesResponse.getId();
+    }
+    finally {
+      if (repoPath != null) {
+        try {
+          Files.deleteIfExists(repoPath);
+        }
+        catch (IOException e) {
+          log.warn("Failed to delete temp file " + repoPath, e);
+        }
+      }
+    }
   }
 
   private String createAssistant(String vectorStoreId) {
