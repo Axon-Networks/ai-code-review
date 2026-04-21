@@ -21,7 +21,7 @@ the plugin.
 
 ## Getting Started
 
-1. **Build:** Requires JDK 11 or higher, Maven 3.0 or higher.
+1. **Build:** Requires JDK 21 or higher, Maven 3.0 or higher.
 
    ```bash
    mvn -U clean package

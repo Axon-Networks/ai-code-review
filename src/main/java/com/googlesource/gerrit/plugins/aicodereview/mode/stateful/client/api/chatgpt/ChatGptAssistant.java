@@ -38,11 +38,10 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.model.api.chat
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.model.api.chatgpt.ChatGptResponse;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.model.api.chatgpt.ChatGptToolResources;
 import com.googlesource.gerrit.plugins.aicodereview.utils.HashUtils;
-
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Path;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -118,21 +117,15 @@ public class ChatGptAssistant extends ClientBase {
     Path repoPath = null;
     try {
       repoPath =
-        createTempFileWithContent(sanitizeFilename(
-          change.getProjectName()),
-          ".json",
-          repoFiles
-        );
+          createTempFileWithContent(sanitizeFilename(change.getProjectName()), ".json", repoFiles);
       ChatGptFiles chatGptFiles = new ChatGptFiles(config);
       ChatGptFilesResponse chatGptFilesResponse = chatGptFiles.uploadFiles(repoPath);
       return chatGptFilesResponse.getId();
-    }
-    finally {
+    } finally {
       if (repoPath != null) {
         try {
           Files.deleteIfExists(repoPath);
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
           log.warn("Failed to delete temp file " + repoPath, e);
         }
       }
