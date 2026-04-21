@@ -31,7 +31,6 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.review.Rev
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateless.client.prompt.AIChatPromptStateless;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,7 +41,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 @Ignore(
     "This test suite is designed to demonstrate how to test the Gerrit and GPT interfaces in a real"
         + " environment. It is not intended to be executed during the regular build process")
-@Slf4j
 @RunWith(MockitoJUnitRunner.class)
 public class CodeReviewPluginIT {
   @Mock private Configuration config;
@@ -67,7 +65,6 @@ public class CodeReviewPluginIT {
         .thenReturn(AIChatPromptStateless.DEFAULT_AI_CHAT_SYSTEM_PROMPT);
 
     AIChatResponseContent answer = chatGptClient.ask(changeSetData, new GerritChange(""), "hello");
-    log.info("answer: {}", answer);
     assertNotNull(answer);
   }
 
@@ -76,7 +73,6 @@ public class CodeReviewPluginIT {
     when(config.getGerritUserName()).thenReturn("Your Gerrit username");
 
     String patchSet = gerritClient.getPatchSet("${changeId}");
-    log.info("patchSet: {}", patchSet);
     assertNotNull(patchSet);
   }
 

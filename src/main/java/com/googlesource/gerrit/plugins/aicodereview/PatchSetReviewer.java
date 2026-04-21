@@ -23,6 +23,7 @@ import com.googlesource.gerrit.plugins.aicodereview.localization.Localizer;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritChange;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritClient;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritClientReview;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.openai.OpenAIModelValidator;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.messages.DebugCodeBlocksReview;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.patch.comment.GerritCommentRange;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.gerrit.GerritCodeRange;
@@ -51,6 +52,7 @@ public class PatchSetReviewer {
   private final ChangeSetData changeSetData;
   private final Provider<GerritClientReview> clientReviewProvider;
   @Getter private final ChatAIClient chatAIClient;
+  private final OpenAIModelValidator openAIModelValidator;
   private final Localizer localizer;
   private final DebugCodeBlocksReview debugCodeBlocksReview;
 
@@ -66,17 +68,20 @@ public class PatchSetReviewer {
       ChangeSetData changeSetData,
       Provider<GerritClientReview> clientReviewProvider,
       ChatAIClient chatAIClient,
+      OpenAIModelValidator openAIModelValidator,
       Localizer localizer) {
     this.config = config;
     this.gerritClient = gerritClient;
     this.changeSetData = changeSetData;
     this.clientReviewProvider = clientReviewProvider;
     this.chatAIClient = chatAIClient;
+    this.openAIModelValidator = openAIModelValidator;
     this.localizer = localizer;
     debugCodeBlocksReview = new DebugCodeBlocksReview(localizer);
   }
 
   public void review(GerritChange change) throws Exception {
+    openAIModelValidator.validateConfiguredModel(config);
     reviewBatches = new ArrayList<>();
     reviewScores = new ArrayList<>();
     commentProperties = gerritClient.getClientData(change).getCommentProperties();

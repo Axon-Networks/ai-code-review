@@ -198,7 +198,8 @@ on the specific requests made.
 
 - `aiMode`: Select whether requests are processed in Stateless or Stateful mode. For backward compatibility, the
 default value is `stateless`. To enable Stateful mode, set this parameter to `stateful`.
-- `aiModel`: The default model is `gpt-4o`. You can also configure it to `gpt-3.5-turbo` or `gpt-4-turbo`.
+- `aiModel`: The default model is `gpt-4o`. You can also configure it to current supported model IDs
+  such as `gpt-5-mini` or `gpt-5`.
 - `aiDomain`: The default if not specified is the ChatGPT domain `https://api.openai.com`.
 This correlates with the `aiType` field which defaults to CHATGPT if not specified.
 - `aiSystemPrompt`: You can modify the default system prompt ("Act as a PatchSet Reviewer") to your preferred prompt.

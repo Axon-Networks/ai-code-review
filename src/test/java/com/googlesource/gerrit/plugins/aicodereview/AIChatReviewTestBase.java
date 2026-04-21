@@ -17,12 +17,15 @@ package com.googlesource.gerrit.plugins.aicodereview;
 import static com.google.gerrit.extensions.client.ChangeKind.REWORK;
 import static com.googlesource.gerrit.plugins.aicodereview.listener.EventHandlerTask.EVENT_CLASS_MAP;
 import static com.googlesource.gerrit.plugins.aicodereview.utils.GsonUtils.getGson;
+import static java.net.HttpURLConnection.HTTP_OK;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.google.common.net.HttpHeaders;
 import com.google.gerrit.entities.Account;
 import com.google.gerrit.extensions.api.GerritApi;
 import com.google.gerrit.extensions.api.accounts.AccountApi;
@@ -59,6 +62,7 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerri
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritClientComments;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritClientFacade;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritClientReview;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.openai.OpenAIModelValidator;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.data.ChangeSetData;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.client.api.chatai.AIChatClientStateful;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.client.api.gerrit.GerritClientPatchSetStateful;
@@ -77,6 +81,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import lombok.NonNull;
+import org.apache.http.entity.ContentType;
 import org.junit.Before;
 import org.junit.Rule;
 import org.mockito.ArgumentCaptor;
@@ -199,6 +204,14 @@ public class AIChatReviewTestBase extends AIChatTestBase {
 
     // Mock the pluginDataHandlerProvider to return the mocked Change pluginDataHandler
     when(pluginDataHandlerProvider.getChangeScope()).thenReturn(pluginDataHandler);
+
+    WireMock.stubFor(
+        WireMock.get(WireMock.urlEqualTo("/v1/models/gpt-4o"))
+            .willReturn(
+                WireMock.aResponse()
+                    .withStatus(HTTP_OK)
+                    .withHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString())
+                    .withBody("{\"id\":\"gpt-4o\",\"object\":\"model\"}")));
   }
 
   private Accounts mockGerritAccountsRestEndpoint() {
@@ -329,6 +342,7 @@ public class AIChatReviewTestBase extends AIChatTestBase {
                 new GerritClientReview(
                     config, accountCacheMock, pluginDataHandlerProvider, localizer)),
             getChatGptClient(),
+            new OpenAIModelValidator(),
             localizer);
     mockConfigCreator = mock(ConfigCreator.class);
   }

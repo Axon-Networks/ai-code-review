@@ -24,6 +24,7 @@ import com.github.rholder.retry.RetryerBuilder;
 import com.github.rholder.retry.StopStrategies;
 import com.github.rholder.retry.WaitStrategies;
 import com.google.inject.Singleton;
+import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -35,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 @Singleton
 @Slf4j
 public class HttpClientWithRetry {
+  private static final int HTTP_TOO_MANY_REQUESTS = 429;
   private final Retryer<HttpResponse<String>> retryer;
 
   private final HttpClient httpClient =
@@ -58,13 +60,23 @@ public class HttpClientWithRetry {
             .retryIfResult(
                 response -> {
                   if (response.statusCode() != HTTP_OK) {
+                    String responseBody = response.body();
+                    if (isRetryableStatus(response.statusCode())) {
+                      log.error(
+                          "Retry because HTTP status code is retryable. Status: {}, body: {}",
+                          response.statusCode(),
+                          responseBody);
+                      return true;
+                    }
                     log.error(
-                        "Retry because HTTP status code is not 200. The status code is: "
-                            + response.statusCode());
-                    return true;
+                        "Do not retry because HTTP status code is not retryable. Status: {}, body:"
+                            + " {}",
+                        response.statusCode(),
+                        responseBody);
                   } else {
                     return false;
                   }
+                  return false;
                 })
             .withWaitStrategy(WaitStrategies.fixedWait(20, TimeUnit.SECONDS))
             .withStopStrategy(StopStrategies.stopAfterAttempt(5))
@@ -74,6 +86,19 @@ public class HttpClientWithRetry {
 
   public HttpResponse<String> execute(HttpRequest request)
       throws ExecutionException, RetryException {
-    return retryer.call(() -> httpClient.send(request, HttpResponse.BodyHandlers.ofString()));
+    HttpResponse<String> response =
+        retryer.call(() -> httpClient.send(request, HttpResponse.BodyHandlers.ofString()));
+    if (response.statusCode() != HTTP_OK) {
+      throw new ExecutionException(
+          new IOException(
+              String.format(
+                  "HTTP request failed with status %d and body: %s",
+                  response.statusCode(), response.body())));
+    }
+    return response;
+  }
+
+  private boolean isRetryableStatus(int statusCode) {
+    return statusCode == HTTP_TOO_MANY_REQUESTS || statusCode >= 500;
   }
 }

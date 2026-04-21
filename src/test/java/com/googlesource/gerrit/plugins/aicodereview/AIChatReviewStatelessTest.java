@@ -209,6 +209,24 @@ public class AIChatReviewStatelessTest extends AIChatReviewTestBase {
   }
 
   @Test
+  public void invalidOpenAiModelFailsFast() {
+    when(globalConfig.getString(Mockito.eq("aiModel"), Mockito.anyString()))
+        .thenReturn("gpt-5.3-mini");
+    WireMock.stubFor(
+        WireMock.get(WireMock.urlEqualTo("/v1/models/gpt-5.3-mini"))
+            .willReturn(
+                WireMock.aResponse()
+                    .withStatus(404)
+                    .withHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString())
+                    .withBody(
+                        "{\"error\":{\"message\":\"The model `gpt-5.3-mini` does not exist\","
+                            + "\"type\":\"invalid_request_error\",\"code\":\"model_not_found\"}}")));
+
+    Assert.assertEquals(
+        EventHandlerTask.Result.FAILURE, handleEventBasedOnType(SupportedEvents.PATCH_SET_CREATED));
+  }
+
+  @Test
   public void gptMentionedInComment() throws RestApiException {
     when(config.getGerritUserName()).thenReturn(GERRIT_GPT_USERNAME);
     AIChatPromptStateless.setCommentEvent(true);
