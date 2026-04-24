@@ -11,7 +11,7 @@ common between chatGPT and other private AI service providers.
 
 ## Features
 
-This plugin allows you to use different AI Chat services, e.g. ChatGPT or OLLAMA for code review in Gerrit conveniently.
+This plugin allows you to use different AI Chat services, e.g. ChatGPT, OLLAMA, or Anthropic Claude for code review in Gerrit conveniently.
 After submitting a Patch Set, OpenAI will provide review feedback in the form of comments and, optionally, a vote.
 You can continue to ask the AI Chat by @{gerritUserName} or @{gerritEmailAddress} (provided that `gerritEmailAddress` is in
 the form "gerritUserName@<any_email_domain>") in the comments to further guide it in generating more targeted review
@@ -133,6 +133,28 @@ If you require a different service, update the optional parameters such as `aiTy
     ...
 ```
 
+### Example Configuration for Anthropic (Claude)
+
+Anthropic's Messages API is used instead of OpenAI's chat completions API. Authentication uses
+the `x-api-key` header (set via `aiToken`), and an `anthropic-version` header is sent on every
+request. Only stateless mode is supported — Anthropic does not expose an equivalent of OpenAI's
+Assistants + vector-store feature used by this plugin's stateful mode.
+
+```
+[plugin "ai-code-review"]
+    # Required parameters
+    aiType = ANTHROPIC
+    aiToken = {anthropicApiKey}   # sent as the x-api-key header
+
+    # Optional parameters (defaults shown)
+    aiModel = claude-opus-4-7
+    aiDomain = https://api.anthropic.com
+    anthropicVersion = 2023-06-01
+    aiMaxTokens = 8192
+    aiMode = stateless            # stateful is not supported for ANTHROPIC
+    ...
+```
+
 #### Secure Configuration
 
 It is highly recommended to store sensitive information such as `aiToken` in the `secure.config`
@@ -216,15 +238,21 @@ This correlates with the `aiType` field which defaults to CHATGPT if not specifi
   review, offering additional context information. Deactivating it (set to false) results in only the changed lines
   being submitted for review.
 - `aiStreamOutput`: The default value is false. Whether the response is expected in stream output mode or not.
-- `aiType`: Allows the selection of different ai chat services the current list is ChatGPT, Ollama, AzureOpenAI and Generic.
-    For compatibility the default is ChatGPT when not specified.  Note: Gemeric is used to allow the specification of new
-    uri endpoints, and different authorization headers to allow new service testing more quickly.
+- `aiType`: Allows the selection of different ai chat services. The current list is ChatGPT, Ollama, AzureOpenAI,
+    Anthropic, and Generic. For compatibility the default is ChatGPT when not specified.  Note: Generic is used to
+    allow the specification of new uri endpoints, and different authorization headers to allow new service testing
+    more quickly.
   - `aiAuthHeaderName`: When using the GENERIC aiType, you can specify any authorization header, which can allow you to test
 non bearer token authorization e.g. api-key used for AZUREOpenAI.
   - `aiChatEndpoint`: When using the GENERIC aiType, you can specify any endpoint you wish
   to test a different ai service, or new API.  e.g. /api/someapi.  Although it is best
   to ensure the API is compatible with the openAPI specification or additional response parsing will be
-  needed to correctly read the data into the new API data structures. 
+  needed to correctly read the data into the new API data structures.
+  - `anthropicVersion`: Only used when `aiType = ANTHROPIC`. Sets the value of the required `anthropic-version`
+    HTTP header sent to Anthropic's Messages API. Defaults to `2023-06-01` (the current stable revision). Update
+    when moving to a newer Anthropic API revision.
+  - `aiMaxTokens`: Maximum number of tokens the model is allowed to produce in a single response. Required by
+    Anthropic's Messages API (defaults to `8192`); ignored by other providers where `max_tokens` is optional. 
 - `maxReviewLines`: The default value is 1000. This sets a limit on the number of lines of code included in the review.
 - `maxReviewFileSize`: Set with a default value of 10000, this parameter establishes a cap on the file size that can be
   included in reviews.

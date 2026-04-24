@@ -21,6 +21,7 @@ import com.google.gerrit.extensions.api.GerritApi;
 import com.google.gerrit.server.config.PluginConfig;
 import com.google.gerrit.server.util.ManualRequestContext;
 import com.google.gerrit.server.util.OneOffRequestContext;
+import com.googlesource.gerrit.plugins.aicodereview.settings.Settings;
 import com.googlesource.gerrit.plugins.aicodereview.settings.Settings.AIType;
 import com.googlesource.gerrit.plugins.aicodereview.settings.Settings.Modes;
 import java.util.Arrays;
@@ -45,6 +46,7 @@ public class Configuration {
   public static final String OPENAI_DOMAIN = "https://api.openai.com";
   public static final String DEFAULT_CHATGPT_MODEL = "gpt-4o";
   public static final String DEFAULT_OPENAI_MODEL = "qwen2.5-coder";
+  public static final int DEFAULT_AI_MAX_TOKENS = Settings.ANTHROPIC_DEFAULT_MAX_TOKENS;
 
   public static final double DEFAULT_AI_CHAT_REVIEW_TEMPERATURE = 0.2;
   public static final double DEFAULT_AI_CHAT_COMMENT_TEMPERATURE = 1.0;
@@ -104,6 +106,8 @@ public class Configuration {
   public static final String KEY_AI_DOMAIN = "aiDomain";
   public static final String KEY_AI_CHAT_ENDPOINT = "aiChatEndpoint";
   public static final String KEY_AI_AUTH_HEADER_NAME = "aiAuthHeaderName";
+  public static final String KEY_AI_MAX_TOKENS = "aiMaxTokens";
+  public static final String KEY_ANTHROPIC_VERSION = "anthropicVersion";
   private static final String KEY_AI_MODEL = "aiModel";
   public static final String KEY_STREAM_OUTPUT = "aiStreamOutput";
   private static final String KEY_AI_MODE = "aiMode";
@@ -177,10 +181,15 @@ public class Configuration {
     // instance by its very nature. it makes more sense to enforce that it is a required field for
     // when
     // aiType==ollama.
-    String aiDomain =
-        getAIType() == AIType.OLLAMA
-            ? getValidatedOrThrow(KEY_AI_DOMAIN)
-            : getString(KEY_AI_DOMAIN, OPENAI_DOMAIN);
+    AIType aiType = getAIType();
+    String aiDomain;
+    if (aiType == AIType.OLLAMA) {
+      aiDomain = getValidatedOrThrow(KEY_AI_DOMAIN);
+    } else if (aiType == AIType.ANTHROPIC) {
+      aiDomain = getString(KEY_AI_DOMAIN, Settings.ANTHROPIC_DOMAIN);
+    } else {
+      aiDomain = getString(KEY_AI_DOMAIN, OPENAI_DOMAIN);
+    }
 
     // trim end slash, so putting endpoint urls together is easier.
     return aiDomain.endsWith("/") ? aiDomain.substring(0, aiDomain.length() - 1) : aiDomain;
@@ -188,9 +197,29 @@ public class Configuration {
 
   public String getAIModel() {
     // default to the chatGPT model if nothing is specified, excecpt if we are using
-    // an openAI compliant service like OLLAMA, then we use its appropriate default.
-    return getString(
-        KEY_AI_MODEL, getAIType() == AIType.OLLAMA ? DEFAULT_OPENAI_MODEL : DEFAULT_CHATGPT_MODEL);
+    // an openAI compliant service like OLLAMA or an Anthropic service, then we use the appropriate
+    // default for that aiType.
+    AIType aiType = getAIType();
+    String defaultModel;
+    switch (aiType) {
+      case OLLAMA:
+        defaultModel = DEFAULT_OPENAI_MODEL;
+        break;
+      case ANTHROPIC:
+        defaultModel = Settings.ANTHROPIC_DEFAULT_MODEL;
+        break;
+      default:
+        defaultModel = DEFAULT_CHATGPT_MODEL;
+    }
+    return getString(KEY_AI_MODEL, defaultModel);
+  }
+
+  public int getAIMaxTokens() {
+    return getInt(KEY_AI_MAX_TOKENS, DEFAULT_AI_MAX_TOKENS);
+  }
+
+  public String getAnthropicVersion() {
+    return getString(KEY_ANTHROPIC_VERSION, Settings.ANTHROPIC_DEFAULT_VERSION);
   }
 
   public boolean getAIReviewPatchSet() {
@@ -347,6 +376,11 @@ public class Configuration {
     switch (getAIType()) {
       case AZUREOPENAI:
         return new BasicNameValuePair(AUTH_HEADER_API_KEY, getAIToken());
+      case ANTHROPIC:
+        // Anthropic's Messages API uses the `x-api-key` header for authentication (not Bearer).
+        // An additional `anthropic-version` header is also required but is attached separately
+        // by the HTTP request construction so it doesn't need to be conflated with auth here.
+        return new BasicNameValuePair(Settings.ANTHROPIC_AUTH_HEADER, getAIToken());
       case OLLAMA:
       case GENERIC:
         // by default no auth header is required for ollama so return null for no auth.

@@ -18,11 +18,16 @@ import static com.googlesource.gerrit.plugins.aicodereview.utils.GsonUtils.getGs
 
 import com.googlesource.gerrit.plugins.aicodereview.config.Configuration;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.ClientBase;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.anthropic.AnthropicStreamDecoder;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.anthropic.AnthropicTools;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.anthropic.AnthropicContentBlock;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.anthropic.AnthropicMessagesResponse;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai.AIChatResponseContent;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai.AIChatResponseMessage;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai.AIChatResponseStreamed;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai.AIChatResponseUnstreamed;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai.AIChatToolCall;
+import com.googlesource.gerrit.plugins.aicodereview.settings.Settings.AIType;
 import java.io.BufferedReader;
 import java.io.StringReader;
 import java.util.List;
@@ -41,6 +46,16 @@ public abstract class AIChatClient extends ClientBase {
 
   protected AIChatResponseContent extractContent(Configuration config, String body)
       throws Exception {
+    // Anthropic's Messages API has a different response shape (top-level `content` array of
+    // blocks in the unstreamed case, typed SSE events in the streamed case), so it needs its own
+    // parser paths that are distinct from the OpenAI chat completions format.
+    if (config.getAIType() == AIType.ANTHROPIC) {
+      if (config.getAIStreamOutput() && !isCommentEvent) {
+        return AnthropicStreamDecoder.decode(body);
+      }
+      return extractAnthropicContent(body);
+    }
+
     if (config.getAIStreamOutput() && !isCommentEvent) {
       StringBuilder finalContent = new StringBuilder();
       try (BufferedReader reader = new BufferedReader(new StringReader(body))) {
@@ -56,6 +71,34 @@ public abstract class AIChatClient extends ClientBase {
       return getResponseContent(
           AIChatResponseUnstreamed.getChoices().get(0).getMessage().getToolCalls());
     }
+  }
+
+  /**
+   * Parse an Anthropic Messages API response. We scan the {@code content} array for a {@code
+   * tool_use} block whose name matches our {@code format_replies} tool; its {@code input} object is
+   * exactly the schema of {@link AIChatResponseContent}, so we serialize it back to JSON and reuse
+   * the same Gson decoding that the OpenAI path uses. This keeps downstream consumers of {@code
+   * AIChatResponseContent} agnostic to the provider.
+   */
+  private AIChatResponseContent extractAnthropicContent(String body) {
+    AnthropicMessagesResponse response = getGson().fromJson(body, AnthropicMessagesResponse.class);
+    if (response == null || response.getContent() == null || response.getContent().isEmpty()) {
+      throw new RuntimeException(
+          "Anthropic response had no content blocks; cannot extract review replies");
+    }
+    for (AnthropicContentBlock block : response.getContent()) {
+      if ("tool_use".equals(block.getType())
+          && AnthropicTools.FORMAT_REPLIES_TOOL_NAME.equals(block.getName())
+          && block.getInput() != null) {
+        // block.getInput() is already a JsonObject matching the AIChatResponseContent schema.
+        return getGson().fromJson(block.getInput(), AIChatResponseContent.class);
+      }
+    }
+    throw new RuntimeException(
+        "Anthropic response did not contain a `"
+            + AnthropicTools.FORMAT_REPLIES_TOOL_NAME
+            + "` tool_use block; stop_reason="
+            + (response.getStopReason() == null ? "<none>" : response.getStopReason()));
   }
 
   protected boolean validateResponse(

@@ -22,11 +22,14 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.googlesource.gerrit.plugins.aicodereview.config.Configuration;
 import com.googlesource.gerrit.plugins.aicodereview.interfaces.mode.common.client.api.openapi.ChatAIClient;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.anthropic.AnthropicTools;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritChange;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.openai.AIChatClient;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.openai.AIChatParameters;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.openai.AIChatTools;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.http.HttpClientWithRetry;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.anthropic.AnthropicMessage;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.anthropic.AnthropicMessagesRequest;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai.AIChatCompletionRequest;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai.AIChatRequestMessage;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai.AIChatResponseContent;
@@ -34,6 +37,8 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.openai
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.data.ChangeSetData;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateless.client.api.UriResourceLocatorStateless;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateless.client.prompt.AIChatPromptStateless;
+import com.googlesource.gerrit.plugins.aicodereview.settings.Settings;
+import com.googlesource.gerrit.plugins.aicodereview.settings.Settings.AIType;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -101,24 +106,39 @@ public class AIChatClientStateless extends AIChatClient implements ChatAIClient 
     if (authHeader != null) {
       builder.header(authHeader.getName(), authHeader.getValue());
     }
+
+    // Anthropic's Messages API requires an explicit `anthropic-version` header in addition to the
+    // x-api-key auth header. Attach it here rather than conflating with the auth header pair above.
+    if (config.getAIType() == AIType.ANTHROPIC) {
+      builder.header(Settings.ANTHROPIC_VERSION_HEADER, config.getAnthropicVersion());
+    }
     return builder.build();
   }
 
   private String createRequestBody(
       Configuration config, ChangeSetData changeSetData, String patchSet) {
     AIChatPromptStateless AIChatPromptStateless = new AIChatPromptStateless(config, isCommentEvent);
-    AIChatRequestMessage systemMessage =
-        AIChatRequestMessage.builder()
-            .role("system")
-            .content(AIChatPromptStateless.getAISystemPrompt())
-            .build();
-    AIChatRequestMessage userMessage =
-        AIChatRequestMessage.builder()
-            .role("user")
-            .content(AIChatPromptStateless.getGptUserPrompt(changeSetData, patchSet))
-            .build();
-
     AIChatParameters AIChatParameters = new AIChatParameters(config, isCommentEvent);
+
+    String systemPrompt = AIChatPromptStateless.getAISystemPrompt();
+    String userPrompt = AIChatPromptStateless.getGptUserPrompt(changeSetData, patchSet);
+
+    if (config.getAIType() == AIType.ANTHROPIC) {
+      return createAnthropicRequestBody(config, AIChatParameters, systemPrompt, userPrompt);
+    }
+    return createOpenAIRequestBody(config, AIChatParameters, systemPrompt, userPrompt);
+  }
+
+  private String createOpenAIRequestBody(
+      Configuration config,
+      AIChatParameters AIChatParameters,
+      String systemPrompt,
+      String userPrompt) {
+    AIChatRequestMessage systemMessage =
+        AIChatRequestMessage.builder().role("system").content(systemPrompt).build();
+    AIChatRequestMessage userMessage =
+        AIChatRequestMessage.builder().role("user").content(userPrompt).build();
+
     AIChatTool[] tools = new AIChatTool[] {AIChatTools.retrieveFormatRepliesTool()};
     AIChatCompletionRequest chatGptCompletionRequest =
         AIChatCompletionRequest.builder()
@@ -135,5 +155,36 @@ public class AIChatClientStateless extends AIChatClient implements ChatAIClient 
             .build();
 
     return getNoEscapedGson().toJson(chatGptCompletionRequest);
+  }
+
+  private String createAnthropicRequestBody(
+      Configuration config,
+      AIChatParameters AIChatParameters,
+      String systemPrompt,
+      String userPrompt) {
+    // Anthropic's Messages API:
+    //   * system prompt is a top-level string, not a role=system item
+    //   * messages array only contains user/assistant roles
+    //   * max_tokens is required
+    //   * tools use input_schema (not function.parameters) and tool_choice is {type:"tool",name:..}
+    AnthropicMessage userMessage =
+        AnthropicMessage.builder().role("user").content(userPrompt).build();
+
+    // Streaming uses Anthropic's typed SSE events (content_block_start, content_block_delta with
+    // input_json_delta, content_block_stop). The matching decoder lives in AnthropicStreamDecoder
+    // and is selected by AIChatClient.extractContent when aiStreamOutput is true.
+    AnthropicMessagesRequest request =
+        AnthropicMessagesRequest.builder()
+            .model(config.getAIModel())
+            .system(systemPrompt)
+            .messages(List.of(userMessage))
+            .temperature(AIChatParameters.getGptTemperature())
+            .maxTokens(config.getAIMaxTokens())
+            .stream(AIChatParameters.getStreamOutput())
+            .tools(List.of(AnthropicTools.retrieveFormatRepliesTool()))
+            .toolChoice(AnthropicTools.retrieveFormatRepliesToolChoice())
+            .build();
+
+    return getNoEscapedGson().toJson(request);
   }
 }

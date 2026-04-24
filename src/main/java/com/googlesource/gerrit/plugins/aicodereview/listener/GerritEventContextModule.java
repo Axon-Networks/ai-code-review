@@ -31,6 +31,7 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.client.api.cha
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.client.api.gerrit.GerritClientPatchSetStateful;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateless.client.api.chatai.AIChatClientStateless;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateless.client.api.gerrit.GerritClientPatchSetStateless;
+import com.googlesource.gerrit.plugins.aicodereview.settings.Settings.AIType;
 
 public class GerritEventContextModule extends FactoryModule {
   private final Event event;
@@ -54,7 +55,17 @@ public class GerritEventContextModule extends FactoryModule {
 
   private Class<? extends ChatAIClient> getChatAIMode() {
     return switch (config.getAIMode()) {
-      case stateful -> AIChatClientStateful.class;
+      case stateful -> {
+        // Stateful mode currently uses ChatGPT's Assistants API (vector stores, threads, file
+        // uploads) which has no direct Anthropic equivalent. Fail fast with a clear message
+        // rather than attempt ChatGPT endpoints against an Anthropic token.
+        if (config.getAIType() == AIType.ANTHROPIC) {
+          throw new UnsupportedOperationException(
+              "aiType=ANTHROPIC is not supported with aiMode=stateful. "
+                  + "Set aiMode=stateless to use Anthropic's Messages API.");
+        }
+        yield AIChatClientStateful.class;
+      }
       case stateless -> AIChatClientStateless.class;
     };
   }

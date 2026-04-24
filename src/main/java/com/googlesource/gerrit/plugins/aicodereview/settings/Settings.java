@@ -42,6 +42,7 @@ public class Settings {
     CHATGPT,
     OLLAMA,
     AZUREOPENAI,
+    ANTHROPIC,
 
     // used for testing new endpoints and ai services not yet in the supported list, but you can
     // specify the
@@ -49,4 +50,13 @@ public class Settings {
     // aiType.
     GENERIC;
   }
+
+  // Anthropic Messages API constants
+  public static final String ANTHROPIC_DOMAIN = "https://api.anthropic.com";
+  public static final String ANTHROPIC_MESSAGES_URI = "/v1/messages";
+  public static final String ANTHROPIC_DEFAULT_MODEL = "claude-opus-4-7";
+  public static final String ANTHROPIC_DEFAULT_VERSION = "2023-06-01";
+  public static final String ANTHROPIC_AUTH_HEADER = "x-api-key";
+  public static final String ANTHROPIC_VERSION_HEADER = "anthropic-version";
+  public static final int ANTHROPIC_DEFAULT_MAX_TOKENS = 8192;
 }

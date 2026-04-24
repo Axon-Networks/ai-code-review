@@ -58,6 +58,7 @@ import com.googlesource.gerrit.plugins.aicodereview.interfaces.mode.common.clien
 import com.googlesource.gerrit.plugins.aicodereview.interfaces.mode.common.client.api.openapi.ChatAIClient;
 import com.googlesource.gerrit.plugins.aicodereview.listener.EventHandlerTask;
 import com.googlesource.gerrit.plugins.aicodereview.localization.Localizer;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.anthropic.AnthropicModelValidator;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritClient;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritClientComments;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritClientFacade;
@@ -343,6 +344,7 @@ public class AIChatReviewTestBase extends AIChatTestBase {
                     config, accountCacheMock, pluginDataHandlerProvider, localizer)),
             getChatGptClient(),
             new OpenAIModelValidator(),
+            new AnthropicModelValidator(),
             localizer);
     mockConfigCreator = mock(ConfigCreator.class);
   }

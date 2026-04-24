@@ -20,6 +20,7 @@ import com.googlesource.gerrit.plugins.aicodereview.config.Configuration;
 import com.googlesource.gerrit.plugins.aicodereview.data.ChangeSetDataHandler;
 import com.googlesource.gerrit.plugins.aicodereview.interfaces.mode.common.client.api.openapi.ChatAIClient;
 import com.googlesource.gerrit.plugins.aicodereview.localization.Localizer;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.anthropic.AnthropicModelValidator;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritChange;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritClient;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerrit.GerritClientReview;
@@ -53,6 +54,7 @@ public class PatchSetReviewer {
   private final Provider<GerritClientReview> clientReviewProvider;
   @Getter private final ChatAIClient chatAIClient;
   private final OpenAIModelValidator openAIModelValidator;
+  private final AnthropicModelValidator anthropicModelValidator;
   private final Localizer localizer;
   private final DebugCodeBlocksReview debugCodeBlocksReview;
 
@@ -69,6 +71,7 @@ public class PatchSetReviewer {
       Provider<GerritClientReview> clientReviewProvider,
       ChatAIClient chatAIClient,
       OpenAIModelValidator openAIModelValidator,
+      AnthropicModelValidator anthropicModelValidator,
       Localizer localizer) {
     this.config = config;
     this.gerritClient = gerritClient;
@@ -76,12 +79,16 @@ public class PatchSetReviewer {
     this.clientReviewProvider = clientReviewProvider;
     this.chatAIClient = chatAIClient;
     this.openAIModelValidator = openAIModelValidator;
+    this.anthropicModelValidator = anthropicModelValidator;
     this.localizer = localizer;
     debugCodeBlocksReview = new DebugCodeBlocksReview(localizer);
   }
 
   public void review(GerritChange change) throws Exception {
+    // Both validators are cheap no-ops unless aiType matches theirs, so we can call them both
+    // unconditionally without branching on aiType here.
     openAIModelValidator.validateConfiguredModel(config);
+    anthropicModelValidator.validateConfiguredModel(config);
     reviewBatches = new ArrayList<>();
     reviewScores = new ArrayList<>();
     commentProperties = gerritClient.getClientData(change).getCommentProperties();

@@ -16,6 +16,7 @@ package com.googlesource.gerrit.plugins.aicodereview.mode.stateless.client.api;
 
 import com.google.common.base.Strings;
 import com.googlesource.gerrit.plugins.aicodereview.config.Configuration;
+import com.googlesource.gerrit.plugins.aicodereview.settings.Settings;
 
 public class UriResourceLocatorStateless {
 
@@ -30,6 +31,11 @@ public class UriResourceLocatorStateless {
       // on loads more code changes in the response parsing.
       case OLLAMA:
         return chatCompletionsUri();
+
+      case ANTHROPIC:
+        // Anthropic's Messages API has its own endpoint shape with a `content` array of
+        // content blocks (text / tool_use) rather than OpenAI's `choices[].message.tool_calls`.
+        return anthropicMessagesUri();
 
       case AZUREOPENAI:
         // TODO: add the endpoint information here, along with the additional query param with the
@@ -58,5 +64,9 @@ public class UriResourceLocatorStateless {
 
   public static String ollamaChatUri() {
     return "/api/chat";
+  }
+
+  public static String anthropicMessagesUri() {
+    return Settings.ANTHROPIC_MESSAGES_URI;
   }
 }

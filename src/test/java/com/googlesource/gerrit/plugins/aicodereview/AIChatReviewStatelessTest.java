@@ -314,4 +314,44 @@ public class AIChatReviewStatelessTest extends AIChatReviewTestBase {
     Assert.assertNull(
         "No expected value for auth header for ollama", config.getAuthorizationHeaderInfo());
   }
+
+  @Test
+  public void testAnthropicAITypeResolves() {
+    when(globalConfig.getString(Mockito.eq("aiType"), Mockito.anyString())).thenReturn("ANTHROPIC");
+    Assert.assertEquals(Settings.AIType.ANTHROPIC, config.getAIType());
+  }
+
+  @Test
+  public void testAnthropicRoutesToMessagesEndpoint() {
+    when(globalConfig.getString(Mockito.eq("aiType"), Mockito.anyString())).thenReturn("ANTHROPIC");
+    Assert.assertEquals(
+        UriResourceLocatorStateless.anthropicMessagesUri(),
+        UriResourceLocatorStateless.getChatResourceUri(config));
+    Assert.assertEquals("/v1/messages", UriResourceLocatorStateless.anthropicMessagesUri());
+  }
+
+  @Test
+  public void testAnthropicUsesXApiKeyAuthHeader() {
+    when(globalConfig.getString(Mockito.eq("aiType"), Mockito.anyString())).thenReturn("ANTHROPIC");
+    Assert.assertEquals("x-api-key", config.getAuthorizationHeaderInfo().getName());
+    Assert.assertEquals(config.getAIToken(), config.getAuthorizationHeaderInfo().getValue());
+  }
+
+  @Test
+  public void testAnthropicDefaultsWhenUnset() {
+    when(globalConfig.getString(Mockito.eq("aiType"), Mockito.anyString())).thenReturn("ANTHROPIC");
+    // aiDomain not configured -> default to Anthropic domain.
+    when(globalConfig.getString(Mockito.eq("aiDomain"), Mockito.anyString()))
+        .thenAnswer(inv -> inv.getArgument(1));
+    Assert.assertEquals(Settings.ANTHROPIC_DOMAIN, config.getAIDomain());
+    // aiModel not configured -> default to Anthropic Opus 4.7.
+    when(globalConfig.getString(Mockito.eq("aiModel"), Mockito.anyString()))
+        .thenAnswer(inv -> inv.getArgument(1));
+    Assert.assertEquals(Settings.ANTHROPIC_DEFAULT_MODEL, config.getAIModel());
+    Assert.assertEquals("claude-opus-4-7", config.getAIModel());
+    // anthropicVersion defaults to a known stable release date.
+    when(globalConfig.getString(Mockito.eq("anthropicVersion"), Mockito.anyString()))
+        .thenAnswer(inv -> inv.getArgument(1));
+    Assert.assertEquals(Settings.ANTHROPIC_DEFAULT_VERSION, config.getAnthropicVersion());
+  }
 }
