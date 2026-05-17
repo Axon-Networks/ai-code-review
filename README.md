@@ -1,5 +1,7 @@
 # AI Code Review Gerrit Plugin
 
+[![CI](https://github.com/kongen/ai-code-review/actions/workflows/ci.yml/badge.svg)](https://github.com/kongen/ai-code-review/actions/workflows/ci.yml)
+
 ## Starting Point
 This plugin has been based on the initial chatGPT plugin available on github: [chatgpt-code-review-gerrit-plugin](https://github.com/amarula/chatgpt-code-review-gerrit-plugin/)
 
@@ -31,6 +33,8 @@ the plugin.
    ```bash
    mvn -U -DskipTests=true clean package
    ```
+
+   GitHub Actions CI runs the same Maven package build with JDK 21 on every push and pull request.
 
 2. **Install:** Upload the compiled jar file to the `$gerrit_site/plugins` directory.
 
