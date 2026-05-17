@@ -35,6 +35,7 @@ the plugin.
    ```
 
    GitHub Actions CI runs the same Maven package build with JDK 21 on every push and pull request.
+   Publishing a GitHub Release also builds the plugin and attaches the generated jar to the release.
 
 2. **Install:** Upload the compiled jar file to the `$gerrit_site/plugins` directory.
 
