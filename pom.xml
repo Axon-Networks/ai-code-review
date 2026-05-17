@@ -10,7 +10,7 @@
     <version>3.14.0</version>
     <properties>
         <Gerrit-ApiType>plugin</Gerrit-ApiType>
-        <Gerrit-ApiVersion>3.14.0-rc6</Gerrit-ApiVersion>
+        <Gerrit-ApiVersion>3.14.0</Gerrit-ApiVersion>
         <lombok.version>1.18.46</lombok.version>
         <slf4j.version>2.0.17</slf4j.version>
         <logback.version>1.5.32</logback.version>
