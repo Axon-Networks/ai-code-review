@@ -199,6 +199,36 @@ public class AIChatReviewStatelessTest extends AIChatReviewTestBase {
   }
 
   @Test
+  public void repeatedFindingDoesNotCastNegativeVote() throws Exception {
+    when(globalConfig.getBoolean(Mockito.eq("aiStreamOutput"), Mockito.anyBoolean()))
+        .thenReturn(false);
+    when(globalConfig.getBoolean(Mockito.eq("enabledVoting"), Mockito.anyBoolean()))
+        .thenReturn(true);
+    WireMock.stubFor(
+        WireMock.post(
+                WireMock.urlEqualTo(
+                    URI.create(
+                            config.getAIDomain() + UriResourceLocatorStateless.chatCompletionsUri())
+                        .getPath()))
+            .willReturn(
+                WireMock.aResponse()
+                    .withStatus(HTTP_OK)
+                    .withHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString())
+                    .withBodyFile("aiChatResponseRepeatedReview.json")));
+
+    AIChatPromptStateless.setCommentEvent(false);
+    handleEventBasedOnType(SupportedEvents.PATCH_SET_CREATED);
+
+    ArgumentCaptor<ReviewInput> captor = testRequestSent();
+    ReviewInput expected =
+        ReviewInput.create()
+            .message("SYSTEM MESSAGE: No update to show for this Change Set")
+            .label("Code-Review", 0);
+    Gson gson = OutputFormat.JSON_COMPACT.newGson();
+    Assert.assertEquals(gson.toJson(expected), gson.toJson(captor.getValue()));
+  }
+
+  @Test
   public void patchSetDisableUserGroup() {
     when(globalConfig.getString(Mockito.eq("disabledGroups"), Mockito.anyString()))
         .thenReturn(GERRIT_USER_GROUP);

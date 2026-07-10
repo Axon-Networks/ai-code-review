@@ -1,0 +1,21 @@
+{
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_repeated_review",
+            "type": "function",
+            "function": {
+              "name": "format_replies",
+              "arguments": "{\"replies\":[{\"reply\":\"This finding was already reported on an earlier patch set.\",\"score\":-1,\"relevance\":0.9,\"repeated\":true,\"conflicting\":false,\"filename\":\"test_file.py\",\"lineNumber\":20,\"codeSnippet\":\"module_name, class_name = module_name.rsplit('.', 1)\"}]}"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
