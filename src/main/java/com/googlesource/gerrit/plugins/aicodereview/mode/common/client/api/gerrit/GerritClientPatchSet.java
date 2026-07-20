@@ -49,6 +49,11 @@ public class GerritClientPatchSet extends GerritClientAccount {
   }
 
   public void retrieveRevisionBase(GerritChange change) {
+    Optional<Integer> eventPatchSetNumber = change.getPatchSetNumber();
+    if (change.isPatchSetCreatedEvent() && eventPatchSetNumber.isPresent()) {
+      revisionBase = eventPatchSetNumber.get() - 1;
+      return;
+    }
     try (ManualRequestContext requestContext = config.openRequestContext()) {
       ChangeInfo changeInfo =
           config
@@ -94,12 +99,17 @@ public class GerritClientPatchSet extends GerritClientAccount {
                     change.getProjectName(),
                     change.getBranchNameKey().shortName(),
                     change.getChangeKey().get())
-                .current()
+                .revision(change.getRevisionId())
                 .file(filename)
                 .diff(revisionBase);
         processFileDiff(filename, diff);
       }
     }
+  }
+
+  protected void resetPatchSetData() {
+    diffs.clear();
+    fileDiffsProcessed.clear();
   }
 
   private boolean isChangeSetBased(ChangeSetData changeSetData) {

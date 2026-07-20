@@ -32,6 +32,7 @@ import com.google.gerrit.extensions.api.accounts.AccountApi;
 import com.google.gerrit.extensions.api.accounts.Accounts;
 import com.google.gerrit.extensions.api.changes.*;
 import com.google.gerrit.extensions.api.changes.ChangeApi.CommentsRequest;
+import com.google.gerrit.extensions.client.ChangeKind;
 import com.google.gerrit.extensions.common.ChangeInfo;
 import com.google.gerrit.extensions.common.CommentInfo;
 import com.google.gerrit.extensions.common.GroupInfo;
@@ -103,6 +104,8 @@ public class AIChatReviewTestBase extends AIChatTestBase {
   protected static final String GPT_DOMAIN = "http://localhost:9527";
   protected static final boolean GPT_STREAM_OUTPUT = true;
   protected static final long TEST_TIMESTAMP = 1699270812;
+  protected static final String TEST_PATCH_SET_REVISION =
+      "f5433ac8b8650225de6d2912032689089e5d9f40";
   private static final int GPT_USER_ACCOUNT_ID = 1000000;
 
   @Rule public WireMockRule wireMockRule = new WireMockRule(9527);
@@ -131,6 +134,8 @@ public class AIChatReviewTestBase extends AIChatTestBase {
   protected ConfigCreator mockConfigCreator;
   protected JsonObject gptRequestBody;
   protected String promptTagComments;
+  protected ChangeKind patchSetKind = REWORK;
+  protected int patchSetNumber = 1;
 
   @Before
   public void before() throws RestApiException {
@@ -201,7 +206,7 @@ public class AIChatReviewTestBase extends AIChatTestBase {
     mockGerritReviewApiCall();
 
     // Mock the GerritApi's revision API
-    when(changeApiMock.current()).thenReturn(revisionApiMock);
+    when(changeApiMock.revision(Mockito.anyString())).thenReturn(revisionApiMock);
 
     // Mock the pluginDataHandlerProvider to return the mocked Change pluginDataHandler
     when(pluginDataHandlerProvider.getChangeScope()).thenReturn(pluginDataHandler);
@@ -254,6 +259,7 @@ public class AIChatReviewTestBase extends AIChatTestBase {
             new TypeLiteral<Map<String, List<CommentInfo>>>() {}.getType());
     when(changeApiMock.commentsRequest()).thenReturn(commentsRequestMock);
     when(commentsRequestMock.get()).thenReturn(comments);
+    Mockito.lenient().when(revisionApiMock.portedComments()).thenReturn(comments);
   }
 
   private void mockGerritChangeApiRestEndpoint() throws RestApiException {
@@ -359,7 +365,9 @@ public class AIChatReviewTestBase extends AIChatTestBase {
 
   private PatchSetAttribute createPatchSetAttribute() {
     PatchSetAttribute patchSetAttribute = new PatchSetAttribute();
-    patchSetAttribute.kind = REWORK;
+    patchSetAttribute.kind = patchSetKind;
+    patchSetAttribute.number = patchSetNumber;
+    patchSetAttribute.revision = TEST_PATCH_SET_REVISION;
     patchSetAttribute.author = createTestAccountAttribute();
     return patchSetAttribute;
   }

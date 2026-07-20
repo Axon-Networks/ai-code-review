@@ -40,6 +40,7 @@ public class GerritClientPatchSetStateless extends GerritClientPatchSet
   }
 
   public String getPatchSet(ChangeSetData changeSetData, GerritChange change) throws Exception {
+    resetPatchSetData();
     int revisionBase = getChangeSetRevisionBase(changeSetData);
     log.debug("Revision base: {}", revisionBase);
 
@@ -62,7 +63,7 @@ public class GerritClientPatchSetStateless extends GerritClientPatchSet
                   change.getProjectName(),
                   change.getBranchNameKey().shortName(),
                   change.getChangeKey().get())
-              .current()
+              .revision(change.getRevisionId())
               .files(revisionBase);
       return files.entrySet().stream()
           .filter(

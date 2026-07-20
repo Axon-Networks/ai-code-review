@@ -86,6 +86,11 @@ In the following example, a Patch Set receives a score of "-1" indicating a reco
 
 ![Example of Vote](images/chatgpt_vote.png?raw=true)
 
+Every `patchset-created` event is reviewed, including rebases and other Gerrit change kinds. The review is bound to the
+revision from the event so that a newer upload cannot redirect an in-flight review. After a later Patch Set is
+successfully reviewed, unresolved threads from earlier AI reviews are marked as superseded; findings that still apply
+are posted again on the new Patch Set. Patch Sets without reviewable content receive an explicit no-content message.
+
 **NOTE**: Voting is disabled by default. To use this feature, it needs to be activated either across all projects or on
 a per-project basis via the `enabledVoting` configuration option, as described below.
 

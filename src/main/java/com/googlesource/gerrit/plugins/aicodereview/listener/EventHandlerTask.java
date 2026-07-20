@@ -147,7 +147,7 @@ public class EventHandlerTask implements Runnable {
   private IEventHandlerType getEventHandlerType() {
     return switch (processing_event_type) {
       case PATCH_SET_CREATED ->
-          new EventHandlerTypePatchSetReview(config, changeSetData, change, reviewer, gerritClient);
+          new EventHandlerTypePatchSetReview(config, change, reviewer, gerritClient);
       case COMMENT_ADDED ->
           new EventHandlerTypeCommentAdded(changeSetData, change, reviewer, gerritClient);
       case CHANGE_MERGED ->

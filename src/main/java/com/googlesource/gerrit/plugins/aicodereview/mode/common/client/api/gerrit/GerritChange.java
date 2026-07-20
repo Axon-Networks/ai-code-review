@@ -19,6 +19,7 @@ import com.google.gerrit.entities.Change;
 import com.google.gerrit.entities.Project;
 import com.google.gerrit.server.data.PatchSetAttribute;
 import com.google.gerrit.server.events.Event;
+import com.google.gerrit.server.events.PatchSetCreatedEvent;
 import com.google.gerrit.server.events.PatchSetEvent;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -72,6 +73,24 @@ public class GerritChange {
     } catch (NullPointerException e) {
       return Optional.empty();
     }
+  }
+
+  public boolean isPatchSetCreatedEvent() {
+    return event instanceof PatchSetCreatedEvent;
+  }
+
+  public String getRevisionId() {
+    if (!isPatchSetCreatedEvent()) {
+      return "current";
+    }
+    return getPatchSetAttribute()
+        .map(attribute -> attribute.revision)
+        .filter(revision -> !revision.isBlank())
+        .orElse("current");
+  }
+
+  public Optional<Integer> getPatchSetNumber() {
+    return getPatchSetAttribute().map(attribute -> attribute.number).filter(number -> number > 0);
   }
 
   public String getProjectName() {

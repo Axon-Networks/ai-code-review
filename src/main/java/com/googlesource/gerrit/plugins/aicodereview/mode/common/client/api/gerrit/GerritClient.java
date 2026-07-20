@@ -17,9 +17,11 @@ package com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerr
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.patch.diff.FileDiffProcessed;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.gerrit.GerritComment;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.gerrit.GerritPermittedVotingRange;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.data.GerritClientData;
 import java.util.HashMap;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -66,6 +68,10 @@ public class GerritClient {
 
   public boolean retrieveLastComments(GerritChange change) {
     return gerritClientFacade.retrieveLastComments(change);
+  }
+
+  public List<GerritComment> getOpenBotThreadTipsBefore(GerritChange change) {
+    return gerritClientFacade.getOpenBotThreadTipsBefore(change);
   }
 
   public void retrievePatchSetInfo(GerritChange change) {
