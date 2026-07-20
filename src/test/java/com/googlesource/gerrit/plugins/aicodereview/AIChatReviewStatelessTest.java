@@ -14,6 +14,7 @@
 
 package com.googlesource.gerrit.plugins.aicodereview;
 
+import static com.google.gerrit.extensions.client.ChangeKind.NO_CODE_CHANGE;
 import static com.googlesource.gerrit.plugins.aicodereview.config.Configuration.KEY_AI_CHAT_ENDPOINT;
 import static com.googlesource.gerrit.plugins.aicodereview.config.Configuration.KEY_AI_TYPE;
 import static com.googlesource.gerrit.plugins.aicodereview.config.Configuration.KEY_STREAM_OUTPUT;
@@ -26,6 +27,7 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.google.common.net.HttpHeaders;
 import com.google.gerrit.extensions.api.changes.FileApi;
 import com.google.gerrit.extensions.api.changes.ReviewInput;
+import com.google.gerrit.extensions.api.changes.ReviewInput.CommentInput;
 import com.google.gerrit.extensions.common.DiffInfo;
 import com.google.gerrit.extensions.common.FileInfo;
 import com.google.gerrit.extensions.restapi.RestApiException;
@@ -39,6 +41,7 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.stateless.client.prompt
 import com.googlesource.gerrit.plugins.aicodereview.settings.Settings;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.reflect.TypeLiteral;
@@ -196,6 +199,131 @@ public class AIChatReviewStatelessTest extends AIChatReviewTestBase {
     Gson gson = OutputFormat.JSON_COMPACT.newGson();
     Assert.assertEquals(
         gson.toJson(gerritPatchSetReview), gson.toJson(captor.getAllValues().get(0)));
+  }
+
+  @Test
+  public void repeatedFindingDoesNotCastNegativeVote() throws Exception {
+    when(globalConfig.getBoolean(Mockito.eq("aiStreamOutput"), Mockito.anyBoolean()))
+        .thenReturn(false);
+    when(globalConfig.getBoolean(Mockito.eq("enabledVoting"), Mockito.anyBoolean()))
+        .thenReturn(true);
+    WireMock.stubFor(
+        WireMock.post(
+                WireMock.urlEqualTo(
+                    URI.create(
+                            config.getAIDomain() + UriResourceLocatorStateless.chatCompletionsUri())
+                        .getPath()))
+            .willReturn(
+                WireMock.aResponse()
+                    .withStatus(HTTP_OK)
+                    .withHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString())
+                    .withBodyFile("aiChatResponseRepeatedReview.json")));
+
+    AIChatPromptStateless.setCommentEvent(false);
+    handleEventBasedOnType(SupportedEvents.PATCH_SET_CREATED);
+
+    ArgumentCaptor<ReviewInput> captor = testRequestSent();
+    ReviewInput expected =
+        ReviewInput.create()
+            .message("SYSTEM MESSAGE: No update to show for this Change Set")
+            .label("Code-Review", 0);
+    Gson gson = OutputFormat.JSON_COMPACT.newGson();
+    Assert.assertEquals(gson.toJson(expected), gson.toJson(captor.getValue()));
+  }
+
+  @Test
+  public void nonReworkPatchSetIsReviewed() throws Exception {
+    patchSetKind = NO_CODE_CHANGE;
+
+    Assert.assertEquals(
+        EventHandlerTask.Result.OK, handleEventBasedOnType(SupportedEvents.PATCH_SET_CREATED));
+
+    testRequestSent();
+  }
+
+  @Test
+  public void patchSetReviewTargetsEventRevision() throws Exception {
+    handleEventBasedOnType(SupportedEvents.PATCH_SET_CREATED);
+
+    testRequestSent();
+    Mockito.verify(changeApiMock, Mockito.atLeastOnce()).revision(TEST_PATCH_SET_REVISION);
+    Mockito.verify(changeApiMock, Mockito.never()).current();
+  }
+
+  @Test
+  public void laterPatchSetSupersedesPriorBotThread() throws Exception {
+    patchSetNumber = 2;
+
+    handleEventBasedOnType(SupportedEvents.PATCH_SET_CREATED);
+
+    ReviewInput review = testRequestSent().getValue();
+    List<CommentInput> comments = review.comments.values().stream().flatMap(List::stream).toList();
+    Assert.assertTrue(
+        comments.stream()
+            .anyMatch(
+                comment ->
+                    "08141f77_56026b40".equals(comment.inReplyTo)
+                        && Boolean.FALSE.equals(comment.unresolved)
+                        && comment.message.contains("superseded")));
+  }
+
+  @Test
+  public void unportedThreadIsNotResolvedOnLatestRevision() throws Exception {
+    patchSetNumber = 2;
+    when(revisionApiMock.portedComments()).thenReturn(Map.of());
+
+    handleEventBasedOnType(SupportedEvents.PATCH_SET_CREATED);
+
+    ReviewInput review = testRequestSent().getValue();
+    List<CommentInput> comments = review.comments.values().stream().flatMap(List::stream).toList();
+    Assert.assertFalse(
+        comments.stream().anyMatch(comment -> Boolean.FALSE.equals(comment.unresolved)));
+  }
+
+  @Test
+  public void skippedReviewDoesNotSupersedePriorThread() throws Exception {
+    patchSetNumber = 2;
+    when(globalConfig.getInt(Mockito.eq("maxReviewLines"), Mockito.anyInt())).thenReturn(0);
+
+    handleEventBasedOnType(SupportedEvents.PATCH_SET_CREATED);
+
+    ReviewInput review = super.testRequestSent().getValue();
+    List<CommentInput> comments = review.comments.values().stream().flatMap(List::stream).toList();
+    Assert.assertTrue(comments.stream().anyMatch(comment -> comment.message.contains("Too many")));
+    Assert.assertFalse(
+        comments.stream().anyMatch(comment -> Boolean.FALSE.equals(comment.unresolved)));
+  }
+
+  @Test
+  public void repeatedFindingIsCarriedOntoLaterPatchSet() throws Exception {
+    patchSetNumber = 2;
+    when(globalConfig.getBoolean(Mockito.eq("aiStreamOutput"), Mockito.anyBoolean()))
+        .thenReturn(false);
+    when(globalConfig.getBoolean(Mockito.eq("enabledVoting"), Mockito.anyBoolean()))
+        .thenReturn(true);
+    WireMock.stubFor(
+        WireMock.post(
+                WireMock.urlEqualTo(
+                    URI.create(
+                            config.getAIDomain() + UriResourceLocatorStateless.chatCompletionsUri())
+                        .getPath()))
+            .willReturn(
+                WireMock.aResponse()
+                    .withStatus(HTTP_OK)
+                    .withHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString())
+                    .withBodyFile("aiChatResponseRepeatedReview.json")));
+
+    handleEventBasedOnType(SupportedEvents.PATCH_SET_CREATED);
+
+    ReviewInput review = testRequestSent().getValue();
+    List<CommentInput> comments = review.comments.values().stream().flatMap(List::stream).toList();
+    Assert.assertEquals(Short.valueOf((short) -1), review.labels.get("Code-Review"));
+    Assert.assertTrue(
+        comments.stream()
+            .anyMatch(
+                comment ->
+                    comment.message.contains("already reported on an earlier patch set")
+                        && Boolean.TRUE.equals(comment.unresolved)));
   }
 
   @Test

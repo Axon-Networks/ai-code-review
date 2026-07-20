@@ -42,6 +42,7 @@ public class GerritClientPatchSetStateful extends GerritClientPatchSet
   }
 
   public String getPatchSet(ChangeSetData changeSetData, GerritChange change) throws Exception {
+    resetPatchSetData();
     if (change.getIsCommentEvent()) return "";
     this.change = change;
 
@@ -62,7 +63,7 @@ public class GerritClientPatchSetStateful extends GerritClientPatchSet
                   change.getProjectName(),
                   change.getBranchNameKey().shortName(),
                   change.getChangeKey().get())
-              .current()
+              .revision(change.getRevisionId())
               .patch()
               .asString();
       log.debug("Formatted Patch retrieved: {}", formattedPatch);

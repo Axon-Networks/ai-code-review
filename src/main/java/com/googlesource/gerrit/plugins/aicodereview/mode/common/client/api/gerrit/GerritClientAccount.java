@@ -48,7 +48,10 @@ public class GerritClientAccount extends GerritClientBase {
     List<String> disabledTopicFilter = config.getDisabledTopicFilter();
     return !enabledTopicFilter.contains(Configuration.ENABLED_TOPICS_ALL)
             && enabledTopicFilter.stream().noneMatch(topic::contains)
-        || !topic.isEmpty() && disabledTopicFilter.stream().anyMatch(topic::contains);
+        || !topic.isEmpty()
+            && disabledTopicFilter.stream()
+                .filter(filter -> !filter.isEmpty())
+                .anyMatch(topic::contains);
   }
 
   protected Optional<Integer> getAccountId(String authorUsername) {

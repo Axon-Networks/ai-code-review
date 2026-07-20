@@ -79,7 +79,7 @@ public class GerritClientReview extends GerritClientAccount {
                   change.getProjectName(),
                   change.getBranchNameKey().shortName(),
                   change.getChangeKey().get())
-              .current()
+              .revision(change.getRevisionId())
               .review(reviewInput);
 
       if (!Strings.isNullOrEmpty(result.error)) {
@@ -143,6 +143,7 @@ public class GerritClientReview extends GerritClientAccount {
       List<CommentInput> filenameComments = comments.getOrDefault(filename, new ArrayList<>());
       CommentInput filenameComment = new CommentInput();
       filenameComment.message = message;
+      filenameComment.inReplyTo = reviewBatch.getId();
       if (reviewBatch.getLine() != null || reviewBatch.getRange() != null) {
         filenameComment.line = reviewBatch.getLine();
         Optional.ofNullable(reviewBatch.getRange())
@@ -155,12 +156,12 @@ public class GerritClientReview extends GerritClientAccount {
                   range.endCharacter = r.endCharacter;
                   filenameComment.range = range;
                 });
-        filenameComment.inReplyTo = reviewBatch.getId();
         unresolved = !config.getInlineCommentsAsResolved();
       } else {
         unresolved = !config.getPatchSetCommentsAsResolved();
       }
-      filenameComment.unresolved = unresolved;
+      filenameComment.unresolved =
+          Optional.ofNullable(reviewBatch.getUnresolved()).orElse(unresolved);
       filenameComments.add(filenameComment);
       comments.putIfAbsent(filename, filenameComments);
     }
