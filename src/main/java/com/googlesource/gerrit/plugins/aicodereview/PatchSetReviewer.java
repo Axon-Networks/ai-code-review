@@ -94,17 +94,22 @@ public class PatchSetReviewer {
     commentProperties = gerritClient.getClientData(change).getCommentProperties();
     gerritCommentRange = new GerritCommentRange(gerritClient, change);
     String patchSet = gerritClient.getPatchSet(change);
+    ChangeSetDataHandler.update(config, change, gerritClient, changeSetData, localizer);
     if (patchSet.isEmpty() && config.getAIMode() == Settings.Modes.stateless) {
       log.info("No file to review has been found in the PatchSet");
+      changeSetData.setReviewSystemMessage(localizer.getText("message.empty.patchset"));
+      clientReviewProvider.get().setReview(change, reviewBatches, changeSetData, null);
       return;
     }
-    ChangeSetDataHandler.update(config, change, gerritClient, changeSetData, localizer);
 
     if (changeSetData.shouldRequestAICodeReview()) {
       AIChatResponseContent reviewReply = getReviewReply(change, patchSet);
       log.debug("AIChat response: {}", reviewReply);
 
       retrieveReviewBatches(reviewReply, change);
+      if (reviewReply.getMessageContent() == null || reviewReply.getMessageContent().isEmpty()) {
+        addSupersededCommentBatches(change);
+      }
     }
     clientReviewProvider
         .get()
@@ -120,12 +125,10 @@ public class PatchSetReviewer {
         String filename = commentProperty.getFilename();
         Integer line = commentProperty.getLine();
         GerritCodeRange range = commentProperty.getRange();
-        if (range != null) {
-          batchMap.setId(id);
-          batchMap.setFilename(filename);
-          batchMap.setLine(line);
-          batchMap.setRange(range);
-        }
+        batchMap.setId(id);
+        batchMap.setFilename(filename);
+        batchMap.setLine(line);
+        batchMap.setRange(range);
       }
     }
   }
@@ -151,9 +154,16 @@ public class PatchSetReviewer {
       Integer score = replyItem.getScore();
       boolean isNotNegative = isNotNegativeReply(score);
       boolean isIrrelevant = isIrrelevantReply(replyItem);
+      boolean carryRepeatedFinding = replyItem.isRepeated() && isReviewOfLaterPatchSet(change);
       boolean isHidden =
-          replyItem.isRepeated() || replyItem.isConflicting() || isIrrelevant || isNotNegative;
-      if (!replyItem.isRepeated() && !replyItem.isConflicting() && !isIrrelevant && score != null) {
+          (replyItem.isRepeated() && !carryRepeatedFinding)
+              || replyItem.isConflicting()
+              || isIrrelevant
+              || isNotNegative;
+      if ((!replyItem.isRepeated() || carryRepeatedFinding)
+          && !replyItem.isConflicting()
+          && !isIrrelevant
+          && score != null) {
         log.debug("Score added: {}", score);
         reviewScores.add(score);
       }
@@ -170,6 +180,26 @@ public class PatchSetReviewer {
         setPatchSetReviewBatchMap(batchMap, replyItem);
       }
       reviewBatches.add(batchMap);
+    }
+  }
+
+  private boolean isReviewOfLaterPatchSet(GerritChange change) {
+    return change.isPatchSetCreatedEvent() && change.getPatchSetNumber().orElse(1) > 1;
+  }
+
+  private void addSupersededCommentBatches(GerritChange change) {
+    if (!isReviewOfLaterPatchSet(change)) {
+      return;
+    }
+    int patchSetNumber = change.getPatchSetNumber().orElseThrow();
+    for (GerritComment comment : gerritClient.getOpenBotThreadTipsBefore(change)) {
+      ReviewBatch batch =
+          new ReviewBatch(
+              String.format(localizer.getText("message.superseded.comment"), patchSetNumber));
+      batch.setId(comment.getId());
+      batch.setFilename(comment.getFilename());
+      batch.setUnresolved(false);
+      reviewBatches.add(batch);
     }
   }
 
