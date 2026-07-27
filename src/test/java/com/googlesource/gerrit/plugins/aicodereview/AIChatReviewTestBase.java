@@ -18,7 +18,6 @@ import static com.google.gerrit.extensions.client.ChangeKind.REWORK;
 import static com.googlesource.gerrit.plugins.aicodereview.listener.EventHandlerTask.EVENT_CLASS_MAP;
 import static com.googlesource.gerrit.plugins.aicodereview.utils.GsonUtils.getGson;
 import static java.net.HttpURLConnection.HTTP_OK;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,6 +49,7 @@ import com.google.gson.JsonObject;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.TypeLiteral;
+import com.google.inject.util.Modules;
 import com.google.inject.util.Providers;
 import com.googlesource.gerrit.plugins.aicodereview.config.ConfigCreator;
 import com.googlesource.gerrit.plugins.aicodereview.config.Configuration;
@@ -76,8 +76,6 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -134,6 +132,7 @@ public class AIChatReviewTestBase extends AIChatTestBase {
   protected ConfigCreator mockConfigCreator;
   protected JsonObject gptRequestBody;
   protected String promptTagComments;
+  protected String commentAddedEventMessage;
   protected ChangeKind patchSetKind = REWORK;
   protected int patchSetNumber = 1;
 
@@ -305,7 +304,15 @@ public class AIChatReviewTestBase extends AIChatTestBase {
                 new AbstractModule() {
                   @Override
                   protected void configure() {
-                    install(new TestGerritEventContextModule(config, event));
+                    install(
+                        Modules.override(new TestGerritEventContextModule(config, event))
+                            .with(
+                                new AbstractModule() {
+                                  @Override
+                                  protected void configure() {
+                                    bind(ChangeSetData.class).toInstance(changeSetData);
+                                  }
+                                }));
 
                     bind(GerritClient.class).toInstance(gerritClient);
                     bind(GitRepoFiles.class).toInstance(gitRepoFiles);
@@ -381,6 +388,7 @@ public class AIChatReviewTestBase extends AIChatTestBase {
             commentEvent.author = this::createTestAccountAttribute;
             commentEvent.patchSet = this::createPatchSetAttribute;
             commentEvent.eventCreatedOn = TEST_TIMESTAMP;
+            commentEvent.comment = commentAddedEventMessage;
             when(commentEvent.getType()).thenReturn("comment-added");
           };
       case PATCH_SET_CREATED ->
@@ -408,12 +416,7 @@ public class AIChatReviewTestBase extends AIChatTestBase {
   }
 
   private AccountCache mockAccountCache() {
-    AccountCache accountCache = mock(AccountCache.class);
-    Account account = Account.builder(Account.id(GPT_USER_ACCOUNT_ID), Instant.now()).build();
-    AccountState accountState = AccountState.forAccount(account, Collections.emptyList());
-    doReturn(Optional.of(accountState)).when(accountCache).getByUsername(GERRIT_GPT_USERNAME);
-
-    return accountCache;
+    return mock(AccountCache.class);
   }
 
   private ChatAIClient getChatGptClient() {

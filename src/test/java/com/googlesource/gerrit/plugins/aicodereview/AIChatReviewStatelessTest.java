@@ -28,6 +28,8 @@ import com.google.common.net.HttpHeaders;
 import com.google.gerrit.extensions.api.changes.FileApi;
 import com.google.gerrit.extensions.api.changes.ReviewInput;
 import com.google.gerrit.extensions.api.changes.ReviewInput.CommentInput;
+import com.google.gerrit.extensions.common.AccountInfo;
+import com.google.gerrit.extensions.common.CommentInfo;
 import com.google.gerrit.extensions.common.DiffInfo;
 import com.google.gerrit.extensions.common.FileInfo;
 import com.google.gerrit.extensions.restapi.RestApiException;
@@ -40,6 +42,7 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.stateless.client.api.Ur
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateless.client.prompt.AIChatPromptStateless;
 import com.googlesource.gerrit.plugins.aicodereview.settings.Settings;
 import java.net.URI;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -358,17 +361,7 @@ public class AIChatReviewStatelessTest extends AIChatReviewTestBase {
   public void gptMentionedInComment() throws RestApiException {
     when(config.getGerritUserName()).thenReturn(GERRIT_GPT_USERNAME);
     AIChatPromptStateless.setCommentEvent(true);
-    WireMock.stubFor(
-        WireMock.post(
-                WireMock.urlEqualTo(
-                    URI.create(
-                            config.getAIDomain() + UriResourceLocatorStateless.chatCompletionsUri())
-                        .getPath()))
-            .willReturn(
-                WireMock.aResponse()
-                    .withStatus(HTTP_OK)
-                    .withHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString())
-                    .withBodyFile("aiChatResponseRequestStateless.json")));
+    stubUnstreamedResponse("aiChatResponseRequestStateless.json");
 
     handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
     int commentPropertiesSize =
@@ -385,6 +378,199 @@ public class AIChatReviewStatelessTest extends AIChatReviewTestBase {
     testRequestSent();
     String userPrompt = prompts.get(1).getAsJsonObject().get("content").getAsString();
     Assert.assertEquals(commentUserPrompt, userPrompt);
+  }
+
+  @Test
+  public void conversationalReplyDoesNotCastVoteWithoutDecisionScore() throws Exception {
+    when(config.getGerritUserName()).thenReturn(GERRIT_GPT_USERNAME);
+    when(globalConfig.getBoolean(Mockito.eq("enabledVoting"), Mockito.anyBoolean()))
+        .thenReturn(true);
+    AIChatPromptStateless.setCommentEvent(true);
+    stubUnstreamedResponse("aiChatResponseRequestStateless.json");
+
+    handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
+
+    ReviewInput review = testRequestSent().getValue();
+    Assert.assertNull(review.labels);
+  }
+
+  @Test
+  public void inlineConversationResponseTargetsTriggeringComment() throws Exception {
+    when(config.getGerritUserName()).thenReturn(GERRIT_GPT_USERNAME);
+    AIChatPromptStateless.setCommentEvent(true);
+    stubUnstreamedResponse("aiChatResponseRequestStateless.json");
+
+    handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
+
+    ReviewInput review = testRequestSent().getValue();
+    List<CommentInput> inlineReplies = review.comments.get("test_file.py");
+    Assert.assertEquals(1, inlineReplies.size());
+    Assert.assertEquals("08141f77_56026b40", inlineReplies.get(0).inReplyTo);
+  }
+
+  @Test
+  public void replyInBotOwnedThreadDoesNotRequireMention() throws Exception {
+    when(config.getGerritUserName()).thenReturn(GERRIT_GPT_USERNAME);
+    CommentInfo botFinding =
+        comment(
+            GERRIT_GPT_ACCOUNT_ID,
+            GERRIT_GPT_USERNAME,
+            "finding",
+            null,
+            "This call may bypass validation.",
+            TEST_TIMESTAMP - 10);
+    botFinding.line = 5;
+    CommentInfo feedback =
+        comment(
+            GERRIT_USER_ACCOUNT_ID,
+            GERRIT_USER_USERNAME,
+            "feedback",
+            "finding",
+            "validation happens before this call",
+            TEST_TIMESTAMP);
+    feedback.line = 5;
+    when(commentsRequestMock.get())
+        .thenReturn(Map.of("test_file.py", List.of(botFinding, feedback)));
+    AIChatPromptStateless.setCommentEvent(true);
+    stubUnstreamedResponse("aiChatResponseRequestStateless.json");
+
+    handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
+
+    ReviewInput review = testRequestSent().getValue();
+    List<CommentInput> inlineReplies = review.comments.get("test_file.py");
+    Assert.assertEquals("feedback", inlineReplies.get(0).inReplyTo);
+  }
+
+  @Test
+  public void unrelatedCommentDoesNotTriggerConversation() throws Exception {
+    when(config.getGerritUserName()).thenReturn(GERRIT_GPT_USERNAME);
+    CommentInfo unrelatedComment =
+        comment(
+            GERRIT_USER_ACCOUNT_ID,
+            GERRIT_USER_USERNAME,
+            "unrelated",
+            null,
+            "validation happens before this call",
+            TEST_TIMESTAMP);
+    unrelatedComment.line = 5;
+    when(commentsRequestMock.get()).thenReturn(Map.of("test_file.py", List.of(unrelatedComment)));
+
+    EventHandlerTask.Result result = handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
+
+    Assert.assertEquals(EventHandlerTask.Result.NOT_SUPPORTED, result);
+    Mockito.verify(revisionApiMock, Mockito.never()).review(Mockito.any());
+  }
+
+  @Test
+  public void quoteOnlyReplyInBotOwnedThreadDoesNotTriggerConversation() throws Exception {
+    when(config.getGerritUserName()).thenReturn(GERRIT_GPT_USERNAME);
+    CommentInfo botFinding =
+        comment(
+            GERRIT_GPT_ACCOUNT_ID,
+            GERRIT_GPT_USERNAME,
+            "finding",
+            null,
+            "This call may bypass validation.",
+            TEST_TIMESTAMP - 10);
+    botFinding.line = 5;
+    CommentInfo quotedReply =
+        comment(
+            GERRIT_USER_ACCOUNT_ID,
+            GERRIT_USER_USERNAME,
+            "quote",
+            "finding",
+            "> @gpt This call may bypass validation.",
+            TEST_TIMESTAMP);
+    quotedReply.line = 5;
+    when(commentsRequestMock.get())
+        .thenReturn(Map.of("test_file.py", List.of(botFinding, quotedReply)));
+
+    EventHandlerTask.Result result = handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
+
+    Assert.assertEquals(EventHandlerTask.Result.NOT_SUPPORTED, result);
+    Mockito.verify(revisionApiMock, Mockito.never()).review(Mockito.any());
+  }
+
+  @Test
+  public void reviewCommandTriggersFullReview() throws Exception {
+    prepareReviewCommandAfterFeedback();
+
+    handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
+
+    testRequestSent();
+    String userPrompt = prompts.get(1).getAsJsonObject().get("content").getAsString();
+    Assert.assertTrue(userPrompt.contains(AIChatPromptStateless.DEFAULT_AI_CHAT_REVIEW_PROMPT));
+  }
+
+  @Test
+  public void reviewMessageCommandTriggersFullReview() throws Exception {
+    when(config.getGerritUserName()).thenReturn(GERRIT_GPT_USERNAME);
+    when(globalConfig.getBoolean(Mockito.eq("aiStreamOutput"), Mockito.anyBoolean()))
+        .thenReturn(false);
+    when(globalConfig.getBoolean(Mockito.eq("enableMessageDebugging"), Mockito.anyBoolean()))
+        .thenReturn(true);
+    when(commentsRequestMock.get()).thenReturn(Map.of());
+    commentAddedEventMessage = "@gpt /review --debug";
+    stubUnstreamedResponse("aiChatResponseReview.json");
+
+    handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
+
+    testRequestSent();
+    String userPrompt = prompts.get(1).getAsJsonObject().get("content").getAsString();
+    Assert.assertTrue(userPrompt.contains(AIChatPromptStateless.DEFAULT_AI_CHAT_REVIEW_PROMPT));
+    Assert.assertTrue(changeSetData.getDebugReviewMode());
+  }
+
+  @Test
+  public void fullReviewAfterFeedbackIncludesConversation() throws Exception {
+    prepareReviewCommandAfterFeedback();
+
+    handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
+
+    testRequestSent();
+    String userPrompt = prompts.get(1).getAsJsonObject().get("content").getAsString();
+    Assert.assertTrue(userPrompt.contains("validation happens before this call"));
+  }
+
+  @Test
+  public void fullReviewAfterFeedbackCanCastVote() throws Exception {
+    prepareReviewCommandAfterFeedback();
+
+    handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
+
+    ReviewInput review = testRequestSent().getValue();
+    Assert.assertEquals(Short.valueOf((short) -1), review.labels.get("Code-Review"));
+  }
+
+  @Test
+  public void forcedReviewResolvesWithdrawnFindingOnCurrentPatchSet() throws Exception {
+    prepareReviewCommandAfterFeedback();
+
+    handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
+
+    ReviewInput review = testRequestSent().getValue();
+    List<CommentInput> comments = review.comments.get("test_file.py");
+    Assert.assertTrue(
+        comments.stream()
+            .anyMatch(
+                comment ->
+                    "feedback".equals(comment.inReplyTo)
+                        && Boolean.FALSE.equals(comment.unresolved)));
+  }
+
+  @Test
+  public void forcedReviewKeepsReaffirmedFindingOpen() throws Exception {
+    prepareReviewCommandAfterFeedback("aiChatResponseRepeatedReview.json", 20);
+
+    handleEventBasedOnType(SupportedEvents.COMMENT_ADDED);
+
+    ReviewInput review = testRequestSent().getValue();
+    if (review.comments != null) {
+      Assert.assertFalse(
+          review.comments.values().stream()
+              .flatMap(List::stream)
+              .anyMatch(comment -> Boolean.FALSE.equals(comment.unresolved)));
+    }
   }
 
   @Test
@@ -481,5 +667,91 @@ public class AIChatReviewStatelessTest extends AIChatReviewTestBase {
     when(globalConfig.getString(Mockito.eq("anthropicVersion"), Mockito.anyString()))
         .thenAnswer(inv -> inv.getArgument(1));
     Assert.assertEquals(Settings.ANTHROPIC_DEFAULT_VERSION, config.getAnthropicVersion());
+  }
+
+  private void prepareReviewCommandAfterFeedback() throws Exception {
+    prepareReviewCommandAfterFeedback("aiChatResponseReview.json", 5);
+  }
+
+  private void prepareReviewCommandAfterFeedback(String responseBodyFile, int findingLine)
+      throws Exception {
+    when(config.getGerritUserName()).thenReturn(GERRIT_GPT_USERNAME);
+    when(globalConfig.getBoolean(Mockito.eq("aiStreamOutput"), Mockito.anyBoolean()))
+        .thenReturn(false);
+    when(globalConfig.getBoolean(Mockito.eq("enabledVoting"), Mockito.anyBoolean()))
+        .thenReturn(true);
+    when(commentsRequestMock.get()).thenReturn(reviewCommandConversation(findingLine));
+    AIChatPromptStateless.setCommentEvent(false);
+    stubUnstreamedResponse(responseBodyFile);
+  }
+
+  private Map<String, List<CommentInfo>> reviewCommandConversation(int findingLine) {
+    CommentInfo botFinding =
+        comment(
+            GERRIT_GPT_ACCOUNT_ID,
+            GERRIT_GPT_USERNAME,
+            "finding",
+            null,
+            "This call may bypass validation.",
+            TEST_TIMESTAMP - 20);
+    botFinding.line = findingLine;
+
+    CommentInfo feedback =
+        comment(
+            GERRIT_USER_ACCOUNT_ID,
+            GERRIT_USER_USERNAME,
+            "feedback",
+            "finding",
+            "@gpt validation happens before this call",
+            TEST_TIMESTAMP - 10);
+    feedback.line = findingLine;
+
+    CommentInfo reviewCommand =
+        comment(
+            GERRIT_USER_ACCOUNT_ID,
+            GERRIT_USER_USERNAME,
+            "finalize",
+            null,
+            "@gpt /review",
+            TEST_TIMESTAMP);
+
+    return Map.of(
+        "/PATCHSET_LEVEL", List.of(reviewCommand),
+        "test_file.py", List.of(botFinding, feedback));
+  }
+
+  private CommentInfo comment(
+      int accountId,
+      String username,
+      String id,
+      String inReplyTo,
+      String message,
+      long updatedEpochSeconds) {
+    CommentInfo comment = new CommentInfo();
+    comment.author = new AccountInfo(accountId);
+    comment.author.username = username;
+    comment.patchSet = 1;
+    comment.id = id;
+    comment.inReplyTo = inReplyTo;
+    comment.unresolved = true;
+    comment.message = message;
+    comment.commitId = TEST_PATCH_SET_REVISION;
+    comment.changeMessageId = id;
+    comment.setUpdated(Instant.ofEpochSecond(updatedEpochSeconds));
+    return comment;
+  }
+
+  private void stubUnstreamedResponse(String bodyFile) {
+    WireMock.stubFor(
+        WireMock.post(
+                WireMock.urlEqualTo(
+                    URI.create(
+                            config.getAIDomain() + UriResourceLocatorStateless.chatCompletionsUri())
+                        .getPath()))
+            .willReturn(
+                WireMock.aResponse()
+                    .withStatus(HTTP_OK)
+                    .withHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString())
+                    .withBodyFile(bodyFile)));
   }
 }

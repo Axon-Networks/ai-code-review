@@ -74,6 +74,10 @@ public class GerritClient {
     return gerritClientFacade.getOpenBotThreadTipsBefore(change);
   }
 
+  public List<GerritComment> getOpenBotThreadTipsOnCurrentPatchSet(GerritChange change) {
+    return gerritClientFacade.getOpenBotThreadTipsOnCurrentPatchSet(change);
+  }
+
   public void retrievePatchSetInfo(GerritChange change) {
     gerritClientFacade.retrievePatchSetInfo(change);
   }

@@ -107,6 +107,7 @@ public class PatchSetReviewer {
       log.debug("AIChat response: {}", reviewReply);
 
       retrieveReviewBatches(reviewReply, change);
+      addWithdrawnCommentBatches(change, reviewReply);
       if (reviewReply.getMessageContent() == null || reviewReply.getMessageContent().isEmpty()) {
         addSupersededCommentBatches(change);
       }
@@ -201,6 +202,38 @@ public class PatchSetReviewer {
       batch.setUnresolved(false);
       reviewBatches.add(batch);
     }
+  }
+
+  private void addWithdrawnCommentBatches(GerritChange change, AIChatResponseContent reviewReply) {
+    if (!changeSetData.getForcedReview() || reviewReply.getReplies() == null) {
+      return;
+    }
+    for (GerritComment comment : gerritClient.getOpenBotThreadTipsOnCurrentPatchSet(change)) {
+      if (comment.getLine() == null
+          || comment.isPatchSetComment()
+          || hasActiveFindingAt(comment, reviewReply.getReplies())) {
+        continue;
+      }
+      ReviewBatch batch = new ReviewBatch(localizer.getText("message.withdrawn.comment"));
+      batch.setId(comment.getId());
+      batch.setFilename(comment.getFilename());
+      batch.setLine(comment.getLine());
+      batch.setRange(comment.getRange());
+      batch.setUnresolved(false);
+      reviewBatches.add(batch);
+    }
+  }
+
+  private boolean hasActiveFindingAt(GerritComment comment, List<AIChatReplyItem> replies) {
+    return replies.stream()
+        .anyMatch(
+            reply ->
+                reply.getScore() != null
+                    && reply.getScore() < 0
+                    && !reply.isConflicting()
+                    && !isIrrelevantReply(reply)
+                    && comment.getFilename().equals(reply.getFilename())
+                    && comment.getLine().equals(reply.getLineNumber()));
   }
 
   private AIChatResponseContent getReviewReply(GerritChange change, String patchSet)

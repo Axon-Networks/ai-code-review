@@ -92,6 +92,9 @@ public class GerritClientComments extends GerritClientAccount {
       log.info("Review of comments from user '{}' is disabled.", authorUsername);
       return false;
     }
+    if (parseEventMessageCommand(commentAddedEvent.comment)) {
+      return false;
+    }
     addLastComments(change);
 
     return !commentProperties.isEmpty();
@@ -152,6 +155,38 @@ public class GerritClientComments extends GerritClientAccount {
         .collect(toList());
   }
 
+  public List<GerritComment> getOpenBotThreadTipsOnCurrentPatchSet(GerritChange change) {
+    Optional<Integer> currentPatchSet = change.getPatchSetNumber();
+    if (currentPatchSet.isEmpty()) {
+      return List.of();
+    }
+    Map<String, List<GerritComment>> threads = new HashMap<>();
+    for (GerritComment comment : commentMap.values()) {
+      if (comment.getId() == null) {
+        continue;
+      }
+      GerritComment root = findThreadRoot(comment, commentMap);
+      if (root.getId() != null) {
+        threads.computeIfAbsent(root.getId(), unused -> new ArrayList<>()).add(comment);
+      }
+    }
+
+    Comparator<GerritComment> byUpdateAndId =
+        Comparator.comparing(
+                (GerritComment comment) -> Optional.ofNullable(comment.getUpdated()).orElse(""))
+            .thenComparing(comment -> Optional.ofNullable(comment.getId()).orElse(""));
+    return threads.values().stream()
+        .filter(thread -> isCurrentBotThread(thread, currentPatchSet.get()))
+        .map(thread -> thread.stream().max(byUpdateAndId).orElseThrow())
+        .filter(comment -> Boolean.TRUE.equals(comment.getUnresolved()))
+        .sorted(
+            Comparator.comparing(
+                    (GerritComment comment) ->
+                        Optional.ofNullable(comment.getFilename()).orElse(""))
+                .thenComparing(comment -> comment.getId()))
+        .collect(toList());
+  }
+
   private List<GerritComment> retrievePortedComments(GerritChange change) throws Exception {
     try (ManualRequestContext requestContext = config.openRequestContext()) {
       Map<String, List<CommentInfo>> comments =
@@ -198,6 +233,15 @@ public class GerritClientComments extends GerritClientAccount {
         && root.getAuthor() != null
         && root.getAuthor().getAccountId() == changeSetData.getGptAccountId()
         && root.getOneBasedPatchSet() < currentPatchSet;
+  }
+
+  private boolean isCurrentBotThread(List<GerritComment> thread, int currentPatchSet) {
+    GerritComment root =
+        thread.stream().filter(comment -> comment.getInReplyTo() == null).findFirst().orElse(null);
+    return root != null
+        && root.getAuthor() != null
+        && root.getAuthor().getAccountId() == changeSetData.getGptAccountId()
+        && root.getOneBasedPatchSet() == currentPatchSet;
   }
 
   private List<GerritComment> retrieveComments(GerritChange change) throws Exception {
@@ -273,7 +317,8 @@ public class GerritClientComments extends GerritClientAccount {
       }
       for (GerritComment latestComment : latestComments) {
         String commentMessage = latestComment.getMessage();
-        if (clientMessage.isBotAddressed(commentMessage)) {
+        if (clientMessage.isBotAddressed(commentMessage)
+            || isActionableReplyInBotOwnedThread(latestComment)) {
           if (clientMessage.parseCommands(commentMessage, true)) {
             if (clientMessage.isContainingHistoryCommand()) {
               clientMessage.processHistoryCommand();
@@ -287,6 +332,38 @@ public class GerritClientComments extends GerritClientAccount {
     } catch (Exception e) {
       log.error("Error while retrieving last comments for change: {}", change.getFullChangeId(), e);
     }
+  }
+
+  private boolean isActionableReplyInBotOwnedThread(GerritComment comment) {
+    if (comment.getInReplyTo() == null || !hasUnquotedContent(comment.getMessage())) {
+      return false;
+    }
+    GerritComment root = findThreadRoot(comment, commentMap);
+    return root.getAuthor() != null
+        && root.getAuthor().getAccountId() == changeSetData.getGptAccountId();
+  }
+
+  private boolean hasUnquotedContent(String message) {
+    return message != null
+        && message
+            .lines()
+            .map(String::strip)
+            .anyMatch(line -> !line.isEmpty() && !line.startsWith(">"));
+  }
+
+  private boolean parseEventMessageCommand(String message) {
+    if (message == null || message.isBlank()) {
+      return false;
+    }
+    ClientMessage clientMessage =
+        new ClientMessage(config, changeSetData, pluginDataHandlerProvider, localizer);
+    if (!clientMessage.isBotAddressed(message) || !clientMessage.parseCommands(message, true)) {
+      return false;
+    }
+    if (clientMessage.isContainingHistoryCommand()) {
+      clientMessage.processHistoryCommand();
+    }
+    return true;
   }
 
   private static GerritComment toComment(CommentInfo comment) {
