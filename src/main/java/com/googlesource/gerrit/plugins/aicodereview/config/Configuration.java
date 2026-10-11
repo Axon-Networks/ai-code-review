@@ -44,7 +44,8 @@ public class Configuration {
 
   // Default Config values
   public static final String OPENAI_DOMAIN = "https://api.openai.com";
-  public static final String DEFAULT_CHATGPT_MODEL = "gpt-4o";
+  public static final String DEFAULT_CHATGPT_MODEL = "gpt-6.1-sol";
+  private static final String LEGACY_CHATGPT_MODEL = "gpt-4o";
   public static final String DEFAULT_OPENAI_MODEL = "qwen2.5-coder";
   public static final int DEFAULT_AI_MAX_TOKENS = Settings.ANTHROPIC_DEFAULT_MAX_TOKENS;
 
@@ -208,10 +209,18 @@ public class Configuration {
       case ANTHROPIC:
         defaultModel = Settings.ANTHROPIC_DEFAULT_MODEL;
         break;
+      case CHATGPT:
+        defaultModel =
+            getAIMode() == Modes.stateless ? DEFAULT_CHATGPT_MODEL : LEGACY_CHATGPT_MODEL;
+        break;
       default:
-        defaultModel = DEFAULT_CHATGPT_MODEL;
+        defaultModel = LEGACY_CHATGPT_MODEL;
     }
     return getString(KEY_AI_MODEL, defaultModel);
+  }
+
+  public boolean usesOpenAIResponses() {
+    return getAIType() == AIType.CHATGPT && getAIModel().matches("gpt-(5|6)([.-].*)?");
   }
 
   public int getAIMaxTokens() {

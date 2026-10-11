@@ -26,6 +26,7 @@ public class UriResourceLocatorStateless {
     // of which to call for which aiType set in the configuration settings.
     switch (configuration.getAIType()) {
       case CHATGPT:
+        return configuration.usesOpenAIResponses() ? "/v1/responses" : chatCompletionsUri();
       // ollama has an OpenAI compatible completions URI endpoint now,
       // use so that the tools_calls format is used for returned data by default saving
       // on loads more code changes in the response parsing.
