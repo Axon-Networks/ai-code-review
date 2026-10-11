@@ -56,6 +56,12 @@ public class GerritEventContextModule extends FactoryModule {
   private Class<? extends ChatAIClient> getChatAIMode() {
     return switch (config.getAIMode()) {
       case stateful -> {
+        if (config.usesOpenAIResponses()) {
+          throw new UnsupportedOperationException(
+              "Configured aiModel '"
+                  + config.getAIModel()
+                  + "' requires aiMode=stateless; stateful mode uses the legacy Assistants API.");
+        }
         // Stateful mode currently uses ChatGPT's Assistants API (vector stores, threads, file
         // uploads) which has no direct Anthropic equivalent. Fail fast with a clear message
         // rather than attempt ChatGPT endpoints against an Anthropic token.

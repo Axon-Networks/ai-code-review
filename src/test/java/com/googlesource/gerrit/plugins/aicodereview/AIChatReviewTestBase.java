@@ -167,13 +167,24 @@ public class AIChatReviewTestBase extends AIChatTestBase {
 
     // Mock the Global Config values that differ from the ones provided by Default
     when(globalConfig.getString(Mockito.eq("aiDomain"), Mockito.anyString()))
-        .thenReturn(GPT_DOMAIN);
+        .thenReturn(getTestAIDomain());
+    // These fixtures exercise the legacy Chat Completions and Assistants protocols.
+    when(globalConfig.getString(Mockito.eq("aiModel"), Mockito.anyString()))
+        .thenReturn(getTestAIModel());
     when(globalConfig.getString("gerritUserName")).thenReturn(GERRIT_GPT_USERNAME);
 
     projectConfig = mock(PluginConfig.class);
 
     // Mock the Project Config values
     when(projectConfig.getBoolean(Mockito.eq("isEnabled"), Mockito.anyBoolean())).thenReturn(true);
+  }
+
+  protected String getTestAIDomain() {
+    return GPT_DOMAIN;
+  }
+
+  protected String getTestAIModel() {
+    return "gpt-4o";
   }
 
   protected void initConfig() {

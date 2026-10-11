@@ -46,6 +46,9 @@ public abstract class AIChatClient extends ClientBase {
 
   protected AIChatResponseContent extractContent(Configuration config, String body)
       throws Exception {
+    if (config.usesOpenAIResponses()) {
+      return OpenAIResponses.decode(body, config.getAIStreamOutput() && !isCommentEvent);
+    }
     // Anthropic's Messages API has a different response shape (top-level `content` array of
     // blocks in the unstreamed case, typed SSE events in the streamed case), so it needs its own
     // parser paths that are distinct from the OpenAI chat completions format.

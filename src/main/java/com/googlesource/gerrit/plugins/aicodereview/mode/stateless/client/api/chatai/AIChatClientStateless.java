@@ -27,6 +27,7 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerri
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.openai.AIChatClient;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.openai.AIChatParameters;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.openai.AIChatTools;
+import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.openai.OpenAIResponses;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.http.HttpClientWithRetry;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.anthropic.AnthropicMessage;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.api.anthropic.AnthropicMessagesRequest;
@@ -125,6 +126,10 @@ public class AIChatClientStateless extends AIChatClient implements ChatAIClient 
 
     if (config.getAIType() == AIType.ANTHROPIC) {
       return createAnthropicRequestBody(config, AIChatParameters, systemPrompt, userPrompt);
+    }
+    if (config.usesOpenAIResponses()) {
+      return OpenAIResponses.createRequestBody(
+          config.getAIModel(), systemPrompt, userPrompt, AIChatParameters.getStreamOutput());
     }
     return createOpenAIRequestBody(config, AIChatParameters, systemPrompt, userPrompt);
   }

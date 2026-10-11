@@ -19,6 +19,7 @@ import com.google.inject.Singleton;
 import com.googlesource.gerrit.plugins.aicodereview.config.Configuration;
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.http.HttpClientWithRetry;
 import com.googlesource.gerrit.plugins.aicodereview.settings.Settings.AIType;
+import com.googlesource.gerrit.plugins.aicodereview.settings.Settings.Modes;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpRequest;
@@ -42,6 +43,12 @@ public class OpenAIModelValidator {
     }
 
     String model = config.getAIModel();
+    if (config.usesOpenAIResponses() && config.getAIMode() == Modes.stateful) {
+      throw new IllegalArgumentException(
+          "Configured aiModel '"
+              + model
+              + "' requires aiMode=stateless; stateful mode uses the legacy Assistants API.");
+    }
     String cacheKey = config.getAIDomain() + "|" + model;
     if (VALIDATED_MODELS.contains(cacheKey)) {
       return;

@@ -132,6 +132,40 @@ Note aiType is only optional as by default the system will assume an aiType of c
 so as to maintain compatibility with the previous chat-gpt version of the plugin.
 If you require a different service, update the optional parameters such as `aiType`.
 
+### Example Configuration for OpenAI
+
+GPT-6.1 Sol is the default for stateless ChatGPT reviews. GPT-5 and GPT-6 model
+families use OpenAI's Responses API, preserving the `format_replies` review schema
+for patch-set reviews and comment replies, with optional streaming.
+
+```ini
+[plugin "ai-code-review"]
+    aiType = CHATGPT
+    aiToken = {openaiApiKey}
+    aiModel = gpt-6.1-sol
+    aiMode = stateless
+    aiStreamOutput = false
+    gerritUserName = {gerritBotUserName}
+```
+
+Other model choices include `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`,
+`gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna`. The plugin validates the
+configured model ID against your API account before reviewing a change. Model
+availability depends on that account. See the [OpenAI model catalog](https://developers.openai.com/api/docs/models).
+
+Responses requests use the model's default reasoning effort and omit temperature
+and seed parameters. They set `store: false` and require a completed
+`format_replies` function call before posting review comments or votes.
+Older explicitly configured models such as `gpt-4o` continue to use Chat
+Completions. Ollama and generic providers retain their existing endpoints.
+
+Modern models require `aiMode = stateless` in this plugin. Stateful mode still
+uses the legacy Assistants and vector-store workflow and retains `gpt-4o` as its
+default. Configuring a GPT-5 or GPT-6 model in stateful mode fails with an
+instruction to select stateless mode. See the [GPT-6 migration guidance](https://developers.openai.com/api/docs/guides/latest-model/gpt-6-astra.md#migration-quickstart).
+Merge events in modern stateless configurations skip legacy Assistants and
+vector-store maintenance.
+
 ### Example Configuration for OLLAMA
 
 ```
@@ -145,7 +179,7 @@ If you require a different service, update the optional parameters such as `aiTy
 
 ### Example Configuration for Anthropic (Claude)
 
-Anthropic's Messages API is used instead of OpenAI's chat completions API. Authentication uses
+Anthropic uses its Messages API. Authentication uses
 the `x-api-key` header (set via `aiToken`), and an `anthropic-version` header is sent on every
 request. Only stateless mode is supported — Anthropic does not expose an equivalent of OpenAI's
 Assistants + vector-store feature used by this plugin's stateful mode.
@@ -230,16 +264,20 @@ on the specific requests made.
 
 - `aiMode`: Select whether requests are processed in Stateless or Stateful mode. For backward compatibility, the
 default value is `stateless`. To enable Stateful mode, set this parameter to `stateful`.
-- `aiModel`: The default model is `gpt-4o`. You can also configure it to current supported model IDs
-  such as `gpt-5-mini` or `gpt-5`.
+- `aiModel`: The stateless ChatGPT default is `gpt-6.1-sol`. GPT-5 and GPT-6
+  families use the Responses API; older models use Chat Completions. Stateful
+  ChatGPT and generic providers retain the `gpt-4o` default. Explicit model IDs
+  override these defaults.
 - `aiDomain`: The default if not specified is the ChatGPT domain `https://api.openai.com`.
 This correlates with the `aiType` field which defaults to CHATGPT if not specified.
 - `aiSystemPrompt`: You can modify the default system prompt ("Act as a PatchSet Reviewer") to your preferred prompt.
 - `aiReviewTemperature`: Specifies the temperature setting for ChatGPT when reviewing a Patch Set, with a default
   setting of 0.2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more
-  focused and deterministic.
+  focused and deterministic. This parameter is omitted for GPT-5 and GPT-6
+  Responses requests, which use the model's default reasoning effort.
 - `aiCommentTemperature`: Specifies the temperature setting for ChatGPT when replying to a comment, with a default
-  setting of 1.0.
+  setting of 1.0. This parameter is also omitted for GPT-5 and GPT-6 Responses
+  requests.
 - `aiReviewPatchSet`: Set to true by default. When switched to false, it disables the automatic review of Patch Sets as
   they are created or updated.
 - `aiReviewCommitMessages`: The default value is true. When enabled, this option also verifies if the commit message

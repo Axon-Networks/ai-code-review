@@ -21,6 +21,7 @@ import com.googlesource.gerrit.plugins.aicodereview.mode.common.client.api.gerri
 import com.googlesource.gerrit.plugins.aicodereview.mode.common.model.data.ChangeSetData;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.client.api.chatgpt.ChatGptAssistant;
 import com.googlesource.gerrit.plugins.aicodereview.mode.stateful.client.api.git.GitRepoFiles;
+import com.googlesource.gerrit.plugins.aicodereview.settings.Settings.Modes;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -46,6 +47,9 @@ public class EventHandlerTypeChangeMerged implements IEventHandlerType {
 
   @Override
   public PreprocessResult preprocessEvent() {
+    if (config.usesOpenAIResponses() && config.getAIMode() == Modes.stateless) {
+      return PreprocessResult.EXIT;
+    }
     return PreprocessResult.OK;
   }
 
